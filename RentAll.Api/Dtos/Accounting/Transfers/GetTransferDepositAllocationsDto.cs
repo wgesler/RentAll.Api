@@ -55,6 +55,12 @@ public class TransferDepositAllocationResponseDto
         SecDep = result.SecDep;
         Sdw = result.Sdw;
         Business = result.Business;
+        SecurityDepositCardRefund = result.SecurityDepositCardRefund;
+        SourceBankAccountId = result.SourceBankAccountId;
+        ChargeAmount = result.ChargeAmount;
+        RefundAmount = result.RefundAmount;
+        RefundBankAccountId = result.RefundBankAccountId;
+        RefundDescription = result.RefundDescription;
         PropertyId = result.PropertyId;
         ReservationId = result.ReservationId;
         ContactId = result.ContactId;
@@ -68,6 +74,12 @@ public class TransferDepositAllocationResponseDto
     public decimal SecDep { get; set; }
     public decimal Sdw { get; set; }
     public decimal Business { get; set; }
+    public bool SecurityDepositCardRefund { get; set; }
+    public int? SourceBankAccountId { get; set; }
+    public decimal ChargeAmount { get; set; }
+    public decimal RefundAmount { get; set; }
+    public int? RefundBankAccountId { get; set; }
+    public string RefundDescription { get; set; } = string.Empty;
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
     public Guid? ContactId { get; set; }

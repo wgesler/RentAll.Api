@@ -17,6 +17,12 @@ public class TransferDepositAllocationResult
     public decimal SecDep { get; set; }
     public decimal Sdw { get; set; }
     public decimal Business { get; set; }
+    public bool SecurityDepositCardRefund { get; set; }
+    public int? SourceBankAccountId { get; set; }
+    public decimal ChargeAmount { get; set; }
+    public decimal RefundAmount { get; set; }
+    public int? RefundBankAccountId { get; set; }
+    public string RefundDescription { get; set; } = string.Empty;
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
     public Guid? ContactId { get; set; }

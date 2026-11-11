@@ -329,47 +329,84 @@ public partial class AccountingManager
             .ThenBy(total => total.ChartOfAccountId)
             .ToList();
 
-        foreach (var accountTotal in destinationAccountTotals)
+        if (isSecurityDepositTransfer)
         {
-            var amount = Math.Abs(accountTotal.Amount);
-            var sampleSplit = accountTotal.Splits[0];
-            // Line Memo is VARCHAR(250). Aggregated transfers must not use long per-split descriptions
-            // or JournalEntryLine_Add fails and the whole update rolls back (Posted JE stays old).
-            var lineMemo = TruncateJournalEntryLineMemo(memo);
             var invoiceCode = SecurityDepositTransferInvoicePrefix(transfer.Description);
-            var creditMemo = isSecurityDepositTransfer ? TruncateJournalEntryLineMemo(BuildSecurityDepositTransferCreditMemo(invoiceCode)) : lineMemo;
-            var debitMemo = isSecurityDepositTransfer
-                ? TruncateJournalEntryLineMemo(IsSecurityDepositAllocationTbrMemo(sampleSplit.Description)
+            var creditMemo = TruncateJournalEntryLineMemo(BuildSecurityDepositTransferCreditMemo(invoiceCode));
+            var netAmount = 0m;
+            foreach (var accountTotal in destinationAccountTotals)
+            {
+                var amount = Math.Abs(accountTotal.Amount);
+                var sampleSplit = accountTotal.Splits[0];
+                var destinationIsDebit = accountTotal.Amount > 0;
+                var debitMemo = TruncateJournalEntryLineMemo(IsSecurityDepositAllocationTbrMemo(sampleSplit.Description)
                     ? BuildSecurityDepositTransferTbrMemo(invoiceCode)
-                    : BuildSecurityDepositTransferDebitMemo(invoiceCode))
-                : lineMemo;
+                    : BuildSecurityDepositTransferDebitMemo(invoiceCode));
+                var destinationLine = new JournalEntryLine
+                {
+                    ChartOfAccountId = accountTotal.ChartOfAccountId,
+                    Debit = destinationIsDebit ? amount : 0,
+                    Credit = destinationIsDebit ? 0 : amount,
+                    Memo = destinationIsDebit ? debitMemo : creditMemo,
+                    CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(destinationLine, ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit));
+                journalEntryLines.Add(destinationLine);
+                netAmount += accountTotal.Amount;
+            }
 
-            var destinationContext = ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit);
-            var destinationIsDebit = accountTotal.Amount > 0;
-
-            var destinationLine = new JournalEntryLine
+            var bankAmount = Math.Abs(Math.Round(netAmount, 2, MidpointRounding.AwayFromZero));
+            if (bankAmount > 0.005m)
             {
-                ChartOfAccountId = accountTotal.ChartOfAccountId,
-                Debit = destinationIsDebit ? amount : 0,
-                Credit = destinationIsDebit ? 0 : amount,
-                Memo = destinationIsDebit ? debitMemo : creditMemo,
-                CreatedBy = currentUser
-            };
-            ApplyJournalEntryLineContext(destinationLine, destinationContext);
-
-            var bankLine = new JournalEntryLine
+                var bankIsCredit = netAmount > 0;
+                var bankLine = new JournalEntryLine
+                {
+                    ChartOfAccountId = bankAccountId,
+                    Debit = bankIsCredit ? 0 : bankAmount,
+                    Credit = bankIsCredit ? bankAmount : 0,
+                    Memo = bankIsCredit ? creditMemo : TruncateJournalEntryLineMemo(BuildSecurityDepositTransferDebitMemo(invoiceCode)),
+                    CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(bankLine, headerLineContext);
+                journalEntryLines.Insert(0, bankLine);
+            }
+        }
+        else
+        {
+            foreach (var accountTotal in destinationAccountTotals)
             {
-                ChartOfAccountId = bankAccountId,
-                Debit = destinationIsDebit ? 0 : amount,
-                Credit = destinationIsDebit ? amount : 0,
-                Memo = destinationIsDebit ? creditMemo : debitMemo,
-                CreatedBy = currentUser
-            };
-            ApplyJournalEntryLineContext(bankLine, headerLineContext);
+                var amount = Math.Abs(accountTotal.Amount);
+                var sampleSplit = accountTotal.Splits[0];
+                // Line Memo is VARCHAR(250). Aggregated transfers must not use long per-split descriptions
+                // or JournalEntryLine_Add fails and the whole update rolls back (Posted JE stays old).
+                var lineMemo = TruncateJournalEntryLineMemo(memo);
+                var destinationContext = ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit);
+                var destinationIsDebit = accountTotal.Amount > 0;
 
-            // Pair: destination first, then matching escrow/bank credit (display ORDER BY CreatedOn).
-            journalEntryLines.Add(destinationLine);
-            journalEntryLines.Add(bankLine);
+                var destinationLine = new JournalEntryLine
+                {
+                    ChartOfAccountId = accountTotal.ChartOfAccountId,
+                    Debit = destinationIsDebit ? amount : 0,
+                    Credit = destinationIsDebit ? 0 : amount,
+                    Memo = lineMemo,
+                    CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(destinationLine, destinationContext);
+
+                var bankLine = new JournalEntryLine
+                {
+                    ChartOfAccountId = bankAccountId,
+                    Debit = destinationIsDebit ? 0 : amount,
+                    Credit = destinationIsDebit ? amount : 0,
+                    Memo = lineMemo,
+                    CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(bankLine, headerLineContext);
+
+                // Pair: destination first, then matching escrow/bank credit (display ORDER BY CreatedOn).
+                journalEntryLines.Add(destinationLine);
+                journalEntryLines.Add(bankLine);
+            }
         }
 
         return ClassifyJournalEntry(new JournalEntry

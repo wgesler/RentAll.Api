@@ -190,6 +190,14 @@ public partial class AccountingManager
         }
 
         var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit, undepositedFundsAccountId);
+        var cardRefundAllocation = await TryBuildSecurityDepositCardRefundTransferAllocationAsync(
+            organizationId,
+            deposit,
+            escrowAmount,
+            escrowJournalEntryLineId,
+            allocationScope);
+        if (cardRefundAllocation != null)
+            return cardRefundAllocation;
 
         List<JournalEntry> depositJournalEntries;
         if (depositJournalEntryCache != null && depositJournalEntryCache.TryGetValue(depositId, out var cachedEntries))
@@ -315,11 +323,32 @@ public partial class AccountingManager
         var secDepAccountId = accountingOffice?.DefaultEscrowSecDepAccountId;
         var sdwAccountId = accountingOffice?.DefaultEscrowSdwAccountId;
         var businessAccountId = accountingOffice?.DefaultBankAccountId;
+        var escrowDepositAccountId = accountingOffice?.DefaultEscrowDepositAccountId;
+        var transferBankAccountId = transfer.BankAccountId is > 0
+            ? transfer.BankAccountId
+            : escrowDepositAccountId;
 
         var results = new List<TransferReportLineAllocationResult>();
+        var reportSplits = (transfer.Splits ?? [])
+            .Where(split => Math.Abs(split.Amount) > 0.005m)
+            .ToList();
+        var securityDepositSplits = reportSplits
+            .Where(split => IsSecurityDepositAllocationMemo(split.Description))
+            .ToList();
+        if (securityDepositSplits.Count > 0)
+        {
+            results.Add(BuildSecurityDepositTransferReportRow(
+                securityDepositSplits,
+                transferBankAccountId,
+                escrowDepositAccountId,
+                ownersAccountId,
+                secDepAccountId,
+                sdwAccountId,
+                businessAccountId));
+        }
 
-        var linkedGroups = (transfer.Splits ?? [])
-            .Where(split => Math.Abs(split.Amount) > 0.005m
+        var linkedGroups = reportSplits
+            .Where(split => !IsSecurityDepositAllocationMemo(split.Description)
                 && split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
             .GroupBy(split => BuildTransferReportSplitGroupKey(split));
 
@@ -336,11 +365,9 @@ public partial class AccountingManager
                 businessAccountId));
         }
 
-        foreach (var manualGroup in GroupUnlinkedTransferSplitsForReport(transfer.Splits))
+        foreach (var manualGroup in GroupUnlinkedTransferSplitsForReport(reportSplits.Where(split => !IsSecurityDepositAllocationMemo(split.Description)).ToList()))
         {
-            results.Add(IsSecurityDepositAllocation(manualGroup)
-                ? BuildSecurityDepositAllocationRow(manualGroup, businessAccountId)
-                : BuildTransferReportLineAllocationFromSplits(
+            results.Add(BuildTransferReportLineAllocationFromSplits(
                     manualGroup,
                     Guid.Empty,
                     ownersAccountId,
@@ -387,6 +414,76 @@ public partial class AccountingManager
 
     private static bool IsSecurityDepositAllocation(IReadOnlyList<TransferSplit> splits)
         => splits.Count > 0 && splits.All(split => IsSecurityDepositAllocationMemo(split.Description));
+
+    private static TransferReportLineAllocationResult BuildSecurityDepositTransferReportRow(
+        IReadOnlyList<TransferSplit> splits,
+        int? transferBankAccountId,
+        int? escrowDepositAccountId,
+        int? ownersAccountId,
+        int? secDepAccountId,
+        int? sdwAccountId,
+        int? businessAccountId)
+    {
+        var escrow = 0m;
+        var ownerEscrow = 0m;
+        var secDep = 0m;
+        var sdw = 0m;
+        var business = 0m;
+        var contextSplit = splits[0];
+
+        foreach (var split in splits)
+        {
+            if (split.ChartOfAccountId is not > 0 || split.Amount == 0m)
+                continue;
+
+            var amount = RoundCurrency(split.Amount);
+            var accountId = split.ChartOfAccountId.Value;
+            if (escrowDepositAccountId is > 0 && accountId == escrowDepositAccountId)
+                escrow += amount > 0m ? -amount : amount;
+            else if (businessAccountId is > 0 && accountId == businessAccountId)
+                business += amount;
+            else if (ownersAccountId is > 0 && accountId == ownersAccountId)
+                ownerEscrow += amount;
+            else if (secDepAccountId is > 0 && accountId == secDepAccountId)
+                secDep += amount;
+            else if (sdwAccountId is > 0 && accountId == sdwAccountId)
+                sdw += amount;
+
+            if (transferBankAccountId is not > 0 || transferBankAccountId == accountId)
+                continue;
+
+            var credit = RoundCurrency(-amount);
+            if (transferBankAccountId == escrowDepositAccountId)
+                escrow += credit < 0m ? Math.Abs(credit) : credit;
+            else if (transferBankAccountId == businessAccountId)
+                business += credit;
+            else if (transferBankAccountId == ownersAccountId)
+                ownerEscrow += credit;
+            else if (transferBankAccountId == secDepAccountId)
+                secDep += credit;
+            else if (transferBankAccountId == sdwAccountId)
+                sdw += credit;
+        }
+
+        return new TransferReportLineAllocationResult
+        {
+            JournalEntryLineId = contextSplit.JournalEntryLineId ?? Guid.Empty,
+            DepositId = Guid.Empty,
+            EscrowAmount = RoundCurrency(escrow),
+            OwnerEscrow = RoundCurrency(ownerEscrow),
+            SecDep = RoundCurrency(secDep),
+            Sdw = RoundCurrency(sdw),
+            Business = RoundCurrency(business),
+            PropertyId = contextSplit.PropertyId,
+            ReservationId = contextSplit.ReservationId,
+            ContactId = contextSplit.ContactId,
+            Description = splits
+                .Select(split => split.Description)
+                .FirstOrDefault(value => IsSecurityDepositAllocationMemo(value) && !IsSecurityDepositAllocationTbrMemo(value))
+                ?? contextSplit.Description
+                ?? string.Empty
+        };
+    }
 
     private static TransferReportLineAllocationResult BuildSecurityDepositAllocationRow(IReadOnlyList<TransferSplit> splits, int? businessAccountId)
     {
@@ -765,6 +862,83 @@ public partial class AccountingManager
     }
 
     #endregion
+
+    private async Task<TransferDepositAllocationResult?> TryBuildSecurityDepositCardRefundTransferAllocationAsync(
+        Guid organizationId,
+        Deposit deposit,
+        decimal escrowAmount,
+        Guid? escrowJournalEntryLineId,
+        TransferDepositAllocationScope allocationScope)
+    {
+        if (allocationScope.PaymentId == Guid.Empty)
+            return null;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(allocationScope.PaymentId, organizationId);
+        if (payment?.PaymentTypeId is not int paymentTypeId
+            || !IsSecurityDepositCardRefund((PaymentType)paymentTypeId)
+            || !IsSecurityDepositRefundMemo(payment.Description))
+            return null;
+
+        var reservationId = allocationScope.ReservationId is { } scopeReservationId && scopeReservationId != Guid.Empty
+            ? scopeReservationId
+            : payment.LedgerLines
+                .Select(line => line.ReservationId)
+                .FirstOrDefault(id => id is { } value && value != Guid.Empty);
+        if (reservationId is not { } resolvedReservationId || resolvedReservationId == Guid.Empty)
+            return null;
+
+        var invoices = await GetInvoicesForReservationsAsync(organizationId, deposit.OfficeId, [resolvedReservationId]);
+        var reservationCode = invoices
+            .Select(invoice => invoice.ReservationCode)
+            .FirstOrDefault(code => !string.IsNullOrWhiteSpace(code))
+            ?? ExtractReservationCode(payment.Description);
+        var applicationPayments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservationCode);
+        var fullAmount = RoundSecurityDepositAmount(applicationPayments
+            .Where(item => IsSecurityDepositPaymentMemo(item.Description, reservationCode))
+            .Sum(item => item.Amount));
+        var refundAmount = RoundSecurityDepositAmount(Math.Abs(payment.Amount));
+        if (fullAmount <= 0.005m)
+            fullAmount = refundAmount;
+        var chargeAmount = RoundSecurityDepositAmount(Math.Max(0m, fullAmount - refundAmount));
+        if (chargeAmount + refundAmount <= 0.005m)
+            return null;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
+        var sourceBankAccountId = GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        var businessAccountId = GetDefaultBankAccount(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        var refundBankAccountId = deposit.BankAccountId is > 0
+            ? deposit.BankAccountId.Value
+            : GetDefaultEscrowDepositAccount(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (sourceBankAccountId <= 0)
+            throw new InvalidOperationException("Security deposit escrow is not configured for this office");
+        if (chargeAmount > 0.005m && businessAccountId <= 0)
+            throw new InvalidOperationException("Business bank is not configured for this office");
+        if (refundAmount > 0.005m && refundBankAccountId <= 0)
+            throw new InvalidOperationException("Escrow deposit account is not configured for this office");
+
+        var invoiceCode = payment.LedgerLines
+            .Select(line => (line.InvoiceCode ?? string.Empty).Trim())
+            .FirstOrDefault(code => code.Length > 0)
+            ?? reservationCode;
+        var description = BuildSecurityDepositTransferCreditMemo(invoiceCode);
+
+        return new TransferDepositAllocationResult
+        {
+            DepositId = deposit.DepositId,
+            JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
+            EscrowAmount = RoundTransferEscrowAmount(escrowAmount),
+            SecurityDepositCardRefund = true,
+            SourceBankAccountId = sourceBankAccountId,
+            ChargeAmount = chargeAmount,
+            RefundAmount = refundAmount,
+            RefundBankAccountId = refundBankAccountId,
+            RefundDescription = $"{description} TBR",
+            PropertyId = allocationScope.PropertyId,
+            ReservationId = resolvedReservationId,
+            ContactId = allocationScope.ContactId,
+            Description = description
+        };
+    }
 
     #region Allocation Result
 
