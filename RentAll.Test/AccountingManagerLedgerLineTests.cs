@@ -398,7 +398,7 @@ public class AccountingManagerLedgerLineTests
     }
 
     [Fact]
-    public void GetLedgerLines_DailySecondMonthProrate_StayUnder30DaysAcrossMonths_SplitsAtMonthAndStopsAtDeparture()
+    public void GetLedgerLines_DailySecondMonthProrate_StayUnder30DaysAcrossMonths_StaysOnArrivalInvoice()
     {
         var reservation = CreateReservation(
             arrival: new DateOnly(2026, 10, 28),
@@ -420,11 +420,9 @@ public class AccountingManagerLedgerLineTests
             rentalCostCodeId: 77);
 
         var octoberRent = Assert.Single(october, x => x.Description.StartsWith("Rental Fee"));
-        Assert.Equal("Rental Fee (10/28-10/31)", octoberRent.Description);
-        Assert.Equal(660m, octoberRent.Amount);
-        var novemberRent = Assert.Single(november, x => x.Description.StartsWith("Rental Fee"));
-        Assert.Equal("Rental Fee (11/01-11/01)", novemberRent.Description);
-        Assert.Equal(165m, novemberRent.Amount);
+        Assert.Equal("Rental Fee (10/28-11/01)", octoberRent.Description);
+        Assert.Equal(825m, octoberRent.Amount);
+        Assert.DoesNotContain(november, x => x.Description.StartsWith("Rental Fee"));
     }
 
     #endregion

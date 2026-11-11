@@ -330,6 +330,27 @@ public partial class AccountingManager
         var stayCrossesMonths = departureMonth != arrivalMonth || departureYear != arrivalYear;
         if (wholeStayDays > 0 && wholeStayDays < PRORATE_DAYS && stayCrossesMonths)
         {
+            // Second Month bills the first 30 days as one invoice. A shorter stay stays on the arrival invoice.
+            if (reservation.ProrateType == ProrateType.SecondMonth)
+            {
+                if (!isFirstMonth)
+                    return lineItems;
+
+                var stayDaysInMonth = DateTime.DaysInMonth(departureYear, departureMonth);
+                var stayIsLastDayOfMonth = departureDay == stayDaysInMonth;
+                var stayDays = CalculateNumberOfDays(arrivalDate, departureDate, reservation.BillingType, true, stayIsLastDayOfMonth);
+                if (stayDays <= 0)
+                    return lineItems;
+
+                AddRentalLine(stayDays, reservation, arrivalDate, departureDate, stayDaysInMonth, true, stayIsLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
+                GetFirstMonthLines(reservation, true, lineItems, ref lineNumber);
+                AddMaidServiceLines(reservation, arrivalDate, departureDate, arrivalYear, arrivalMonth, lineItems, ref lineNumber);
+                foreach (var extraFeeLine in reservation.ExtraFeeLines)
+                    AddExtraFeeLines(extraFeeLine, arrivalDate, departureDate, arrivalYear, arrivalMonth, isProratedMonth, stayDays, lineItems, ref lineNumber);
+                AddDepartureFeeIfApplicable(reservation, arrivalDate, lineItems, ref lineNumber);
+                return lineItems;
+            }
+
             var sliceStart = arrivalDate > startDate ? arrivalDate : startDate;
             var sliceEnd = departureDate < endDate ? departureDate : endDate;
             if (sliceEnd < sliceStart)
@@ -1009,6 +1030,8 @@ public partial class AccountingManager
             : null;
         ApplyMissingPreviewBilledGridMetrics(preview, billedRow);
         var invoiceNights = CountRentalDays(ledgerLines, reservation, billingMonth, billingMonth.Year);
+        ApplyProrateWindowToPreviewPeriod(ledgerLines, reservation, billingMonth, ref previewStart, ref previewEnd, ref invoiceNights);
+        preview.InvoicePeriod = FormatInvoicePeriod(previewStart, previewEnd);
         preview.BilledPeriodStart = previewStart;
         preview.BilledPeriodEnd = previewEnd;
         preview.BilledStartDate = previewStart;
@@ -1160,6 +1183,63 @@ public partial class AccountingManager
         if (days < daysInMonth && days < PRORATE_DAYS)
             return days;
         return PRORATE_DAYS;
+    }
+
+    private static void ApplyProrateWindowToPreviewPeriod(
+        IReadOnlyList<LedgerLine> ledgerLines,
+        Reservation reservation,
+        DateOnly billingMonth,
+        ref DateOnly previewStart,
+        ref DateOnly previewEnd,
+        ref int invoiceNights)
+    {
+        DateOnly? chargeStart = null;
+        DateOnly? chargeEnd = null;
+        var departure = ResolveBillingDepartureDate(reservation);
+        foreach (var line in ledgerLines)
+        {
+            if (!IsRentalFeeLedgerLine(line))
+                continue;
+            if (!InvoiceBillingDays.TryParseRentalFeePeriod(line.Description, billingMonth.Year, out var lineStart, out var lineEnd))
+                continue;
+
+            var restoredEnd = InvoiceBillingDays.RestoreRentalPeriodEndForGetChargesCount(
+                lineEnd,
+                reservation.BillingType,
+                true,
+                departure);
+            if (chargeStart == null || lineStart < chargeStart)
+                chargeStart = lineStart;
+            if (chargeEnd == null || restoredEnd > chargeEnd)
+                chargeEnd = restoredEnd;
+        }
+
+        if (chargeStart == null || chargeEnd == null)
+            return;
+
+        var changed = false;
+        if (chargeStart.Value > previewStart && chargeStart.Value <= previewEnd)
+        {
+            previewStart = chargeStart.Value;
+            changed = true;
+        }
+
+        if (chargeEnd.Value > previewEnd)
+        {
+            previewEnd = chargeEnd.Value;
+            changed = true;
+        }
+
+        if (!changed)
+            return;
+
+        var isDeparture = previewEnd == departure;
+        invoiceNights = CalculateNumberOfDays(
+            previewStart,
+            previewEnd,
+            reservation.BillingType,
+            isDeparture,
+            previewEnd.Day == DateTime.DaysInMonth(previewEnd.Year, previewEnd.Month));
     }
 
     private static int SumRentalDaysBilledInMonth(IReadOnlyList<Invoice> invoices, Reservation reservation, DateOnly billingMonth)

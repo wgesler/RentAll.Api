@@ -194,7 +194,18 @@ public partial class AccountingRepository
 
         var normalizedIncomingLedgerLines = new List<LedgerLine>(dedupedIncomingLedgerLines.Count);
         var incomingLedgerLineIds = new HashSet<Guid>();
-        foreach (var line in dedupedIncomingLedgerLines)
+        var incomingKnownIds = dedupedIncomingLedgerLines
+            .Select(line => line.LedgerLineId)
+            .Where(id => id != Guid.Empty && currentLedgerLineIds.Contains(id))
+            .ToHashSet();
+        // Existing rows first. A new charge placed after a payment can be renumbered onto
+        // that payment's old line number; matching by line number before the payment is
+        // claimed writes the new charge onto the payment, then the payment write replaces it.
+        var orderedIncomingLedgerLines = dedupedIncomingLedgerLines
+            .OrderBy(line => line.LedgerLineId != Guid.Empty && currentLedgerLineIds.Contains(line.LedgerLineId) ? 0 : 1)
+            .ThenBy(line => line.LineNumber)
+            .ToList();
+        foreach (var line in orderedIncomingLedgerLines)
         {
             if (line.LedgerLineId != Guid.Empty && currentLedgerLineIds.Contains(line.LedgerLineId))
             {
@@ -207,8 +218,10 @@ public partial class AccountingRepository
 
             // If the client row id is missing/stale but the line number exists on this invoice,
             // treat it as an update of that existing line instead of an insert.
+            // Skip when another incoming row already owns that id (it moved to a new line number).
             if (currentLedgerLineByLineNumber.TryGetValue(line.LineNumber, out var existingLineForNumber)
-                && !incomingLedgerLineIds.Contains(existingLineForNumber.LedgerLineId))
+                && !incomingLedgerLineIds.Contains(existingLineForNumber.LedgerLineId)
+                && !incomingKnownIds.Contains(existingLineForNumber.LedgerLineId))
             {
                 line.LedgerLineId = existingLineForNumber.LedgerLineId;
                 MergeLedgerLineFromExisting(line, existingLineForNumber);
