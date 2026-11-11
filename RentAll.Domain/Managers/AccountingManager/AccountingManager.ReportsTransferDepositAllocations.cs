@@ -412,6 +412,11 @@ public partial class AccountingManager
         return $"ctx:{split.PropertyId}:{split.ReservationId}:{split.ContactId}";
     }
 
+    private static bool IsSecurityDepositCardRefundPayment(Payment payment)
+        => payment.PaymentTypeId is int paymentTypeId
+            && IsSecurityDepositCardRefund((PaymentType)paymentTypeId)
+            && IsSecurityDepositRefundMemo(payment.Description);
+
     private static bool IsSecurityDepositAllocation(IReadOnlyList<TransferSplit> splits)
         => splits.Count > 0 && splits.All(split => IsSecurityDepositAllocationMemo(split.Description));
 
@@ -874,9 +879,7 @@ public partial class AccountingManager
             return null;
 
         var payment = await _accountingRepository.GetPaymentByIdAsync(allocationScope.PaymentId, organizationId);
-        if (payment?.PaymentTypeId is not int paymentTypeId
-            || !IsSecurityDepositCardRefund((PaymentType)paymentTypeId)
-            || !IsSecurityDepositRefundMemo(payment.Description))
+        if (payment == null)
             return null;
 
         var reservationId = allocationScope.ReservationId is { } scopeReservationId && scopeReservationId != Guid.Empty
@@ -893,6 +896,15 @@ public partial class AccountingManager
             .FirstOrDefault(code => !string.IsNullOrWhiteSpace(code))
             ?? ExtractReservationCode(payment.Description);
         var applicationPayments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservationCode);
+        Payment? cardRefund = null;
+        if (IsSecurityDepositCardRefundPayment(payment))
+            cardRefund = payment;
+        else if (IsSecurityDepositPaymentMemo(payment.Description, reservationCode))
+            cardRefund = applicationPayments.FirstOrDefault(IsSecurityDepositCardRefundPayment);
+        if (cardRefund == null)
+            return null;
+
+        payment = cardRefund;
         var fullAmount = RoundSecurityDepositAmount(applicationPayments
             .Where(item => IsSecurityDepositPaymentMemo(item.Description, reservationCode))
             .Sum(item => item.Amount));
