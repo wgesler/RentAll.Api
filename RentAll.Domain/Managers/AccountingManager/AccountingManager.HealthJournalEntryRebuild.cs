@@ -6,6 +6,38 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Health Journal Entry Rebuild
+    public async Task OmitSecurityDepositTransferLineAmountMismatchesAsync(DocumentHealthResult result)
+    {
+        if (result.Issues.Count == 0)
+            return;
+
+        var removed = 0;
+        for (var index = result.Issues.Count - 1; index >= 0; index--)
+        {
+            var issue = result.Issues[index];
+            if (!issue.Issue.Contains("amount does not match linked line", StringComparison.OrdinalIgnoreCase)
+                || issue.DocumentId == Guid.Empty)
+                continue;
+
+            var transfer = await _accountingRepository.GetTransferByIdAsync(issue.DocumentId, issue.OrganizationId);
+            var linkedSplits = (transfer?.Splits ?? [])
+                .Where(split => Math.Abs(split.Amount) > 0.005m)
+                .Where(split => issue.RelatedId is not { } lineId || lineId == Guid.Empty || split.JournalEntryLineId == lineId)
+                .ToList();
+            if (linkedSplits.Count == 0 || linkedSplits.Any(split => !IsSecurityDepositAllocationMemo(split.Description)))
+                continue;
+
+            result.Issues.RemoveAt(index);
+            removed++;
+        }
+
+        if (removed == 0)
+            return;
+
+        result.Summary.DocumentsMissingJe = Math.Max(0, result.Summary.DocumentsMissingJe - removed);
+        result.Summary.IsClean = result.Summary.DocumentsMissingJe == 0 && result.Issues.Count == 0;
+    }
+
     public async Task StampHealthIssuePostedJournalEntriesAsync(Guid organizationId, string officeIds, DocumentHealthResult result)
     {
         if (result.Issues.Count == 0)

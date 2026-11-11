@@ -72,6 +72,7 @@ public partial class AccountingManager
             + $"escrowCandidates={escrowLineCandidates.Count} claimedByOthers={claimedLineIds.Count}");
 
         var splitGroups = GroupTransferSplitsForReconciliation(transfer.Splits).ToList();
+        await LinkSecurityDepositAllocationSplitsToRefundDepositAsync(transfer, escrowDepositAccountId, trail);
         await LinkTransferGroupsToFullDepositAmountAsync(transfer, splitGroups, escrowDepositAccountId, claimedLineIds, trail);
 
         foreach (var splitGroup in splitGroups)
@@ -117,6 +118,74 @@ public partial class AccountingManager
         }
 
         await FillUnlinkedTransferSplitsFromSiblingEscrowLinesAsync(transfer, escrowDepositAccountId, trail);
+    }
+
+    private async Task LinkSecurityDepositAllocationSplitsToRefundDepositAsync(Transfer transfer, int transferBankAccountId, AccountingSyncBailTrail? trail)
+    {
+        var allocationSplits = (transfer.Splits ?? [])
+            .Where(split => IsSecurityDepositAllocationMemo(split.Description) && Math.Abs(split.Amount) > 0.005m)
+            .ToList();
+        if (allocationSplits.Count == 0)
+            return;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(transfer.OrganizationId, transfer.OfficeId);
+        var escrowDepositAccountId = GetDefaultEscrowDepositAccount(chartOfAccounts, transfer.OfficeId, accountingOffice);
+        if (escrowDepositAccountId <= 0)
+            escrowDepositAccountId = transferBankAccountId;
+        if (escrowDepositAccountId <= 0)
+            return;
+
+        var candidates = (await BuildEscrowDepositLineCandidatesAsync(transfer, escrowDepositAccountId))
+            .Where(candidate => DepositTransactionDateIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
+            .ToList();
+
+        foreach (var group in allocationSplits.GroupBy(split => SecurityDepositTransferInvoiceKey(split.Description)))
+        {
+            var reservationId = group
+                .Select(split => NormalizeOptionalGuid(split.ReservationId))
+                .FirstOrDefault(id => id != null);
+            var amounts = group
+                .Select(split => Math.Abs(RoundCurrency(split.Amount)))
+                .Distinct()
+                .OrderBy(amount => amount)
+                .ToList();
+
+            Guid? lineId = null;
+            foreach (var amount in amounts)
+            {
+                var matches = candidates
+                    .Where(candidate =>
+                        Math.Abs(Math.Abs(candidate.NetAmount) - amount) <= 0.005m
+                        && (reservationId == null || candidate.ReservationId == null || candidate.ReservationId == reservationId))
+                    .Select(candidate => candidate.JournalEntryLineId)
+                    .Distinct()
+                    .ToList();
+                if (matches.Count != 1)
+                    continue;
+
+                lineId = matches[0];
+                break;
+            }
+
+            if (lineId is not { } resolvedLineId || resolvedLineId == Guid.Empty)
+            {
+                trail?.Bail($"Security deposit transfer {group.Key} has no single refund deposit line.");
+                continue;
+            }
+
+            foreach (var split in group)
+                split.JournalEntryLineId = resolvedLineId;
+
+            trail?.Note($"Security deposit transfer {group.Key} -> deposit line {resolvedLineId}.");
+        }
+    }
+
+    private static string SecurityDepositTransferInvoiceKey(string? description)
+    {
+        var value = (description ?? string.Empty).Trim();
+        var marker = ": Transfer:";
+        var index = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        return index > 0 ? value[..index].Trim() : value;
     }
 
     private async Task LinkTransferGroupsToFullDepositAmountAsync(
@@ -827,6 +896,9 @@ public partial class AccountingManager
 
         foreach (var lineGroup in splitsByLine)
         {
+            if (lineGroup.All(split => IsSecurityDepositAllocationMemo(split.Description)))
+                continue;
+
             var lineId = lineGroup.Key;
             var line = await GetJournalEntryLineByIdCachedAsync(lineId);
             if (line == null)

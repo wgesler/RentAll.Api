@@ -279,6 +279,7 @@ public class HealthController : BaseController
         try
         {
             var result = await runCheck(CurrentOrganizationId, officeIds);
+            await _accountingManager.OmitSecurityDepositTransferLineAmountMismatchesAsync(result);
             await _accountingManager.StampHealthIssuePostedJournalEntriesAsync(CurrentOrganizationId, officeIds, result);
             return Ok(new DocumentHealthResultDto(result));
         }

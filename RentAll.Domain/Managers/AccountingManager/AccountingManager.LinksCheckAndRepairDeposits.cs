@@ -1646,6 +1646,18 @@ public partial class AccountingManager
                     candidate.SourceCode))
             .ToList();
 
+        var signedSplitAmount = RoundCurrency(split.Amount);
+        if (amountMatches.Count > 1 && Math.Abs(signedSplitAmount) > 0.005m)
+        {
+            var signedMatches = amountMatches
+                .Where(candidate => signedSplitAmount < 0m
+                    ? candidate.NetAmount < -0.005m
+                    : candidate.NetAmount > 0.005m)
+                .ToList();
+            if (signedMatches.Count > 0)
+                amountMatches = signedMatches;
+        }
+
         if (amountMatches.Count == 1)
             return amountMatches[0].JournalEntryLineId;
 
