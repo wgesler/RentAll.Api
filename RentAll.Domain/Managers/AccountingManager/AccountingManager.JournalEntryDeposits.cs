@@ -394,6 +394,7 @@ public partial class AccountingManager
         await ClearDepositDocumentLinksAsync(deposit.OrganizationId, deposit.DepositId, currentUser);
 
         await ApplyDepositDocumentLinksFromDepositSplitsAsync(deposit, currentUser);
+        await ApplyUndepositedFundsSourceDepositLinksAsync(deposit, currentUser);
 
         var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser, unstampMissingPayments);
@@ -870,6 +871,63 @@ public partial class AccountingManager
                 deposit.OrganizationId,
                 deposit.DepositId,
                 currentUser);
+        }
+    }
+
+    private async Task ApplyUndepositedFundsSourceDepositLinksAsync(Deposit deposit, Guid currentUser)
+    {
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            return;
+
+        var splits = (deposit.Splits ?? [])
+            .Where(split => IsPaymentBackedDepositSplit(split, undepositedFundsAccountId)
+                && Math.Abs(split.Amount) > 0.005m
+                && !string.IsNullOrWhiteSpace(split.Description))
+            .ToList();
+        if (splits.Count == 0)
+            return;
+
+        var lines = (await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        {
+            OrganizationId = deposit.OrganizationId,
+            OfficeIds = deposit.OfficeId.ToString(),
+            ChartOfAccountId = undepositedFundsAccountId,
+            IncludeUnposted = true,
+            ShowAll = true
+        })).ToList();
+
+        var processedJournalEntryIds = new HashSet<Guid>();
+        foreach (var split in splits)
+        {
+            var description = split.Description.Trim();
+            var reservationId = NormalizeOptionalGuid(split.ReservationId);
+            foreach (var line in lines)
+            {
+                if (Math.Abs(RoundCurrency((line.Debit - line.Credit) - split.Amount)) > 0.005m)
+                    continue;
+
+                var lineText = (line.Memo ?? string.Empty).Trim();
+                var entryText = (line.JournalEntryMemo ?? string.Empty).Trim();
+                if (!string.Equals(lineText, description, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(entryText, description, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (reservationId != null && NormalizeOptionalGuid(line.ReservationId) != reservationId)
+                    continue;
+
+                if (!processedJournalEntryIds.Add(line.JournalEntryId))
+                    continue;
+
+                var journalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
+                if (journalEntry == null || journalEntry.DepositId == deposit.DepositId)
+                    continue;
+
+                ApplyDepositDocumentLink(journalEntry, deposit);
+                journalEntry.ModifiedBy = currentUser;
+                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+            }
         }
     }
 
