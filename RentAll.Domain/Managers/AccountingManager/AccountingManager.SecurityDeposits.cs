@@ -71,7 +71,13 @@ public partial class AccountingManager
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, departure.OfficeId, accountingOffice);
 
         var securityDepositCharges = BuildSecurityDepositChargeLines(securityDepositInvoices, costCodeById);
-        var outstandingCharges = BuildOutstandingChargeLines(invoices, costCodeById);
+        var applicationPayments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservation.ReservationCode);
+        var ignoredPaymentIds = applicationPayments
+            .Where(payment => IsSecurityDepositRefundMemo(payment.Description)
+                || IsSecurityDepositPaymentMemo(payment.Description, reservation.ReservationCode))
+            .Select(payment => payment.PaymentId)
+            .ToHashSet();
+        var outstandingCharges = BuildOutstandingChargeLines(invoices, costCodeById, ignoredPaymentIds);
 
         var securityDepositPayments = new List<SecurityDepositDetailLine>();
         foreach (var securityDepositInvoice in securityDepositInvoices)
@@ -118,7 +124,7 @@ public partial class AccountingManager
             .Where(line => line.Amount != 0m)
             .ToList();
 
-        var refundPayments = (await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservation.ReservationCode))
+        var refundPayments = applicationPayments
             .Where(payment => IsSecurityDepositRefundMemo(payment.Description));
         foreach (var payment in refundPayments)
         {
@@ -361,11 +367,13 @@ public partial class AccountingManager
         var isCardRefund = IsSecurityDepositCardRefund(context.PaymentType);
         var refundAccountId = isCardRefund
             ? GetDefaultUndepositedFunds(chartOfAccounts, context.OfficeId, accountingOffice)
-            : GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, context.OfficeId, accountingOffice);
+            : context.ChartOfAccountId > 0
+                ? context.ChartOfAccountId
+                : GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, context.OfficeId, accountingOffice);
         if (refundAccountId <= 0)
             throw new Exception(isCardRefund
                 ? "Undeposited funds is not configured for this office"
-                : "Security deposit escrow is not configured for this office");
+                : "Select the bank account for this security deposit refund");
 
         var payment = new Payment
         {
@@ -373,7 +381,7 @@ public partial class AccountingManager
             OfficeId = context.OfficeId,
             PaymentDate = context.PaymentDate,
             Amount = -RoundSecurityDepositAmount(Math.Abs(refundAmount)),
-            CostCodeId = ResolveSecurityDepositPaymentCostCodeId(costCodeById),
+            CostCodeId = ResolveSecurityDepositRefundPaymentCostCodeId(costCodeById, chartOfAccounts, context.OfficeId, refundAccountId, context.PaymentType),
             Description = BuildSecurityDepositRefundMemo(context.ReservationCode),
             PaymentKindId = (int)PaymentKind.Invoice,
             PaymentTypeId = (int)context.PaymentType,
@@ -513,16 +521,43 @@ public partial class AccountingManager
         return appliedCostCode.CostCodeId;
     }
 
-    private static int ResolveSecurityDepositPaymentCostCodeId(IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static int ResolveSecurityDepositRefundPaymentCostCodeId(IReadOnlyDictionary<int, CostCode> costCodeById, List<ChartOfAccount> chartOfAccounts, int officeId, int chartOfAccountId, PaymentType paymentType)
     {
-        var costCode = costCodeById.Values
-            .Where(code => code.IsActive && code.TransactionType == TransactionType.Payment)
+        var account = chartOfAccounts.FirstOrDefault(item => item.AccountId == chartOfAccountId && item.OfficeId == officeId);
+        var accountCode = account == null ? string.Empty : NormalizeAccountCode(account.AccountNo);
+        var paymentCostCodes = costCodeById.Values
+            .Where(code => code.IsActive
+                && code.OfficeId == officeId
+                && code.TransactionType == TransactionType.Payment
+                && (string.IsNullOrWhiteSpace(accountCode)
+                    || NormalizeAccountCode(code.Code).Equals(accountCode, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        var typedMatch = paymentCostCodes
+            .Where(code => SecurityDepositRefundCostCodeMatchesType(code.Description, paymentType))
             .OrderBy(code => code.CostCodeId)
             .FirstOrDefault();
-        if (costCode == null)
-            throw new Exception("No payment cost code is configured for this office");
+        if (typedMatch != null)
+            return typedMatch.CostCodeId;
 
-        return costCode.CostCodeId;
+        var accountMatch = paymentCostCodes.OrderBy(code => code.CostCodeId).FirstOrDefault();
+        if (accountMatch != null && !string.IsNullOrWhiteSpace(accountCode))
+            return accountMatch.CostCodeId;
+
+        var accountLabel = string.IsNullOrWhiteSpace(account?.AccountNo) ? chartOfAccountId.ToString() : account.AccountNo.Trim();
+        throw new Exception($"No payment cost code is configured for account {accountLabel}");
+    }
+
+    private static bool SecurityDepositRefundCostCodeMatchesType(string? description, PaymentType paymentType)
+    {
+        var text = description ?? string.Empty;
+        return paymentType switch
+        {
+            PaymentType.CreditCard or PaymentType.CreditCardRefund =>
+                text.Contains("CC", StringComparison.OrdinalIgnoreCase) || text.Contains("Credit", StringComparison.OrdinalIgnoreCase),
+            PaymentType.Check => text.Contains("Check", StringComparison.OrdinalIgnoreCase),
+            PaymentType.Ach => text.Contains("ACH", StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
     }
 
     private async Task DeleteSecurityDepositApplicationPaymentsAsync(Guid organizationId, Reservation reservation, Guid currentUser)
@@ -605,10 +640,6 @@ public partial class AccountingManager
                 ? allocationTransferred
                 : 0m;
             row.TransferredAmount = RoundSecurityDepositAmount(transferJournalAmount + allocationTransferAmount);
-            var pendingTransferAmount = invoiceEnrichment.ToBeTransferredByReservation.TryGetValue(row.ReservationId, out var pendingTransfer)
-                ? pendingTransfer
-                : 0m;
-            row.ToBeTransferredAmount = RoundSecurityDepositAmount(Math.Max(0m, pendingTransferAmount));
 
             if (invoiceEnrichment.SecurityDepositInfoByReservation.TryGetValue(row.ReservationId, out var securityDepositInfo))
             {
@@ -618,15 +649,21 @@ public partial class AccountingManager
                 row.PaidJournalEntryCode = securityDepositInfo.PaidJournalEntryCode;
                 row.InvoiceId = securityDepositInfo.DepositInvoiceId;
                 row.InvoiceCode = securityDepositInfo.DepositInvoiceCode;
-                continue;
+            }
+            else
+            {
+                row.Deposit = 0m;
+                row.CollectedAmount = 0m;
+                row.PaidJournalEntryId = null;
+                row.PaidJournalEntryCode = string.Empty;
+                row.InvoiceId = null;
+                row.InvoiceCode = string.Empty;
             }
 
-            row.Deposit = 0m;
-            row.CollectedAmount = 0m;
-            row.PaidJournalEntryId = null;
-            row.PaidJournalEntryCode = string.Empty;
-            row.InvoiceId = null;
-            row.InvoiceCode = string.Empty;
+            var pendingTransferAmount = invoiceEnrichment.ToBeTransferredByReservation.TryGetValue(row.ReservationId, out var pendingTransfer)
+                ? pendingTransfer
+                : 0m;
+            row.ToBeTransferredAmount = RoundSecurityDepositAmount(Math.Max(0m, pendingTransferAmount - row.TransferredAmount));
         }
     }
 
@@ -1095,14 +1132,14 @@ public partial class AccountingManager
             collectedAmount += CalculateSecurityDepositPaymentAllocation(sdInvoice, costCodeById, ignoredPaymentIds).PaidAmount;
         }
 
-        var heldOwedAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById, ignoredPaymentIds)
-            .Where(line => line.InvoiceId is { } heldInvoiceId && heldInvoiceId != Guid.Empty)
+        var chargeAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById, ignoredPaymentIds)
+            .Where(line => line.InvoiceId is { } chargeInvoiceId && chargeInvoiceId != Guid.Empty)
             .Sum(line => line.Amount));
         var owedAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById)
             .Where(line => line.InvoiceId is { } invoiceId && invoiceId != Guid.Empty)
             .Sum(line => line.Amount));
         var roundedCollectedAmount = RoundSecurityDepositAmount(collectedAmount);
-        var balanceAmount = RoundSecurityDepositAmount(Math.Max(0m, roundedCollectedAmount - heldOwedAmount));
+        var balanceAmount = RoundSecurityDepositAmount(Math.Max(0m, roundedCollectedAmount - chargeAmount));
         var toBeTransferredAmount = RoundSecurityDepositAmount(Math.Max(0m, rePaymentAmount - balanceAmount));
         return (owedAmount, balanceAmount, toBeTransferredAmount, new SecurityDepositInvoiceInfo
         {
