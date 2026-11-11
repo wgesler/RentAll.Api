@@ -1193,12 +1193,23 @@ public partial class AccountingManager
 
             var clippedStart = periodStart < monthStart ? monthStart : periodStart;
             var clippedEnd = periodEnd > monthEnd ? monthEnd : periodEnd;
+            var inDepartureMonth = departureDate.Month == billingMonth.Month && departureDate.Year == billingMonth.Year;
+            var countEnd = clippedEnd;
+            if (inDepartureMonth && clippedEnd == periodEnd)
+            {
+                countEnd = InvoiceBillingDays.RestoreRentalPeriodEndForGetChargesCount(
+                    clippedEnd,
+                    reservation.BillingType,
+                    true,
+                    departureDate);
+            }
+
             total += CalculateNumberOfDays(
                 clippedStart,
-                clippedEnd,
+                countEnd,
                 reservation.BillingType,
-                clippedEnd.Month == departureDate.Month && clippedEnd.Year == departureDate.Year,
-                clippedEnd.Day == monthEnd.Day);
+                countEnd == departureDate,
+                countEnd.Day == monthEnd.Day);
         }
 
         return total;
