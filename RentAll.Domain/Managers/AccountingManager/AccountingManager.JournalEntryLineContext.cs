@@ -235,7 +235,7 @@ public partial class AccountingManager
     private static string? ResolveInvoiceResponsibleContactName(Contact contact, ReservationType reservationType)
     {
         if (reservationType is ReservationType.Corporate or ReservationType.Platform)
-            return NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
+            return NormalizeOptionalString(contact.CompanyName ?? contact.DisplayName ?? contact.FullName);
 
         if (contact.EntityType == EntityType.Company)
             return NormalizeOptionalString(contact.CompanyName ?? contact.DisplayName ?? contact.FullName);

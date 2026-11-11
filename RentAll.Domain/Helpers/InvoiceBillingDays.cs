@@ -28,11 +28,10 @@ public static class InvoiceBillingDays
             return billingType == BillingType.Nightly && isDepartureMonthYear ? 0 : 1;
 
         var days = endDate.DayNumber - startDate.DayNumber;
-        if (billingType != BillingType.Nightly
-            || (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
-        {
+        // Nightly keeps the end date except in the departure month, where that date is checkout.
+        // A 31-day month must still count the 30th. Checkout is the only night left out.
+        if (billingType != BillingType.Nightly || !isDepartureMonthYear)
             days++;
-        }
 
         return days;
     }

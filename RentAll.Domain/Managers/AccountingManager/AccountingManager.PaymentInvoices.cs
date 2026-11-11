@@ -1008,6 +1008,13 @@ public partial class AccountingManager
             ? System.Text.Json.JsonSerializer.Serialize(billedRow.RentalFeeLines)
             : null;
         ApplyMissingPreviewBilledGridMetrics(preview, billedRow);
+        var invoiceNights = CountRentalDays(ledgerLines, reservation, billingMonth, billingMonth.Year);
+        preview.BilledPeriodStart = previewStart;
+        preview.BilledPeriodEnd = previewEnd;
+        preview.BilledStartDate = previewStart;
+        preview.BilledEndDate = previewEnd;
+        preview.BilledDaysStayed = invoiceNights;
+        preview.BilledDaysBilled = invoiceNights;
 
         previewInvoices.Add(preview);
         nextSequence++;
