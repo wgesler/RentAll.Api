@@ -874,6 +874,30 @@ public partial class AccountingManager
         }
     }
 
+    private async Task<bool> SelectedJournalEntryAlreadyHasMatchingUndepositedFundsLineAsync(
+        Deposit deposit,
+        DepositSplit split,
+        int undepositedFundsAccountId)
+    {
+        if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
+            return false;
+
+        var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+        if (sourceLine?.JournalEntryId is not { } journalEntryId || journalEntryId == Guid.Empty)
+            return false;
+
+        var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, deposit.OrganizationId);
+        if (journalEntry?.DepositId != deposit.DepositId)
+            return false;
+
+        var description = split.Description.Trim();
+        return (journalEntry.JournalEntryLines ?? []).Any(line =>
+            line.ChartOfAccountId == undepositedFundsAccountId
+            && Math.Abs(RoundCurrency((line.Debit - line.Credit) - split.Amount)) <= 0.005m
+            && (string.Equals((line.Memo ?? string.Empty).Trim(), description, StringComparison.OrdinalIgnoreCase)
+                || string.Equals((journalEntry.Memo ?? string.Empty).Trim(), description, StringComparison.OrdinalIgnoreCase)));
+    }
+
     private async Task ApplyUndepositedFundsSourceDepositLinksAsync(Deposit deposit, Guid currentUser)
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
@@ -886,9 +910,17 @@ public partial class AccountingManager
                 && Math.Abs(split.Amount) > 0.005m
                 && !string.IsNullOrWhiteSpace(split.Description))
             .ToList();
-        if (splits.Count == 0)
+        var unmatchedSplits = new List<DepositSplit>();
+        foreach (var split in splits)
+        {
+            if (!await SelectedJournalEntryAlreadyHasMatchingUndepositedFundsLineAsync(deposit, split, undepositedFundsAccountId))
+                unmatchedSplits.Add(split);
+        }
+
+        if (unmatchedSplits.Count == 0)
             return;
 
+        splits = unmatchedSplits;
         var lines = (await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
         {
             OrganizationId = deposit.OrganizationId,
