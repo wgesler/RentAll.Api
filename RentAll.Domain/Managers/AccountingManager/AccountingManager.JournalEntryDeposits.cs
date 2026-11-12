@@ -375,6 +375,7 @@ public partial class AccountingManager
 
         journalEntry.DepositId = deposit.DepositId;
         journalEntry.DepositCode = deposit.DepositCode.Trim();
+        ApplyTransferDocumentLinkFromDeposit(journalEntry, deposit);
     }
 
     private static void ClearDepositDocumentLink(JournalEntry journalEntry)

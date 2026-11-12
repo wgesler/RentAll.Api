@@ -487,6 +487,15 @@ public partial class AccountingManager
         journalEntry.TransferCode = transfer.TransferCode.Trim();
     }
 
+    private static void ApplyTransferDocumentLinkFromDeposit(JournalEntry journalEntry, Deposit deposit)
+    {
+        if (deposit.TransferId is not Guid transferId || transferId == Guid.Empty)
+            return;
+
+        journalEntry.TransferId = transferId;
+        journalEntry.TransferCode = (deposit.TransferCode ?? string.Empty).Trim();
+    }
+
     private static void ClearTransferDocumentLink(JournalEntry journalEntry)
     {
         journalEntry.TransferId = null;
