@@ -396,6 +396,11 @@ public partial class AccountingManager
 
         await SyncPaymentDocumentLinksAsync(payment, currentUser);
         result.Note("SyncPaymentDocumentLinksAsync completed.");
+
+        // If a deposit split is waiting on this payment (exact AR rematch),
+        // attach it now as part of the save.
+        await TryAttachPaymentToExactDepositSplitMatchAsync(payment, currentUser);
+        result.Note("TryAttachPaymentToExactDepositSplitMatchAsync completed.");
     }
 
     private async Task<JournalEntry> CreateConsolidatedInvoicePaymentJournalEntryAsync(Payment payment, IReadOnlyList<PaymentApplicationContext> applications, Guid currentUser)

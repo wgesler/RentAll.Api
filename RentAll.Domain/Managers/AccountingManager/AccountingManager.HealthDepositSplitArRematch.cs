@@ -5,6 +5,77 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     /// <summary>
+    /// Save-path entry to the same exact AR rematch the deposit health fix applies.
+    /// Finds the deposit whose unlinked split is an exact match for this payment
+    /// (invoice code, amount, payment date on or before the deposit date, reservation)
+    /// and attaches it, so resaving a payment repairs the link without a health fix.
+    /// </summary>
+    private async Task TryAttachPaymentToExactDepositSplitMatchAsync(Payment payment, Guid currentUser)
+    {
+        if (payment.PaymentId == Guid.Empty
+            || !payment.IsActive
+            || payment.PaymentKindId != (int)Enums.PaymentKind.Invoice)
+            return;
+
+        var candidateDeposits = new List<Deposit>();
+        if (payment.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty)
+        {
+            var stampedDeposit = await _accountingRepository.GetDepositByIdAsync(stampedDepositId, payment.OrganizationId);
+            if (stampedDeposit != null)
+                candidateDeposits.Add(stampedDeposit);
+        }
+        else if (_officeSyncCache != null)
+        {
+            candidateDeposits.AddRange(_officeSyncCache.Deposits
+                .Where(deposit => deposit.OfficeId == payment.OfficeId));
+        }
+        else
+        {
+            var officeDeposits = await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+            {
+                OrganizationId = payment.OrganizationId,
+                OfficeIds = payment.OfficeId.ToString(),
+                IsActive = true,
+                IncludeInactive = false
+            });
+            if (officeDeposits != null)
+                candidateDeposits.AddRange(officeDeposits);
+        }
+
+        foreach (var deposit in candidateDeposits
+                     .Where(deposit => deposit.IsActive
+                                       && deposit.DepositDate >= payment.PaymentDate
+                                       && deposit.Splits != null
+                                       && deposit.Splits.Any(split => split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty))
+                     .OrderBy(deposit => deposit.DepositDate)
+                     .ThenBy(deposit => deposit.DepositCode, StringComparer.OrdinalIgnoreCase))
+        {
+            var candidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+                payment.OrganizationId,
+                deposit.DepositId);
+            if (candidates?.ExactMatches == null
+                || !candidates.ExactMatches.Any(match => match.PaymentId == payment.PaymentId))
+                continue;
+
+            await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
+                deposit,
+                payment.OrganizationId,
+                currentUser,
+                new JournalEntrySyncResult(),
+                trail: null);
+
+            var attached = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId);
+            if (attached != null)
+            {
+                payment.DepositId = attached.DepositId;
+                payment.DepositCode = attached.DepositCode;
+            }
+
+            return;
+        }
+    }
+
+    /// <summary>
     /// Same apply as Fix_DepositSplit_ArRematchAndStamp.sql @Commit = 1 (ExactApply only).
     /// </summary>
     private async Task ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
