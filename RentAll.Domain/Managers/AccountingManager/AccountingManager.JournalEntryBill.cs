@@ -286,7 +286,7 @@ public partial class AccountingManager
             return BuildBillMemo(receiptCode, split.Description);
 
         return bill.IsUtility
-            ? BuildOwnerUtilityBillMemo(receiptCode, split.Description)
+            ? BuildOwnerUtilityMemo(receiptCode, split.Description)
             : BuildOwnerBillMemo(receiptCode, split.Description);
     }
 
@@ -313,7 +313,7 @@ public partial class AccountingManager
             throw new Exception($"Bill {receiptCode} requires a description to create a bill payment journal entry memo.");
 
         if (bill.IsUtility)
-            return BuildOwnerUtilityBillMemo(receiptCode, detail);
+            return BuildOwnerUtilityMemo(receiptCode, detail);
 
         if (eligibleSplits.Count > 0 && eligibleSplits.All(split => split.ReceiptType == ReceiptType.Owner))
             return BuildOwnerBillMemo(receiptCode, detail);
@@ -344,7 +344,7 @@ public partial class AccountingManager
             throw new Exception("Bill description is required to create a bill journal entry memo");
 
         if (bill.IsUtility)
-            return BuildOwnerUtilityBillMemo(receiptCode, bill.Description);
+            return BuildOwnerUtilityMemo(receiptCode, bill.Description);
 
         var splits = eligibleSplits?
             .Where(split => split.ReceiptType != ReceiptType.NonExpense)

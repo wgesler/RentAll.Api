@@ -279,9 +279,12 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(split.Description))
             throw new Exception("Split description is required to create a receipt journal entry memo");
 
-        return split.ReceiptType == ReceiptType.Owner
-            ? BuildOwnerReceiptMemo(receiptCode, split.Description)
-            : BuildReceiptMemo(receiptCode, split.Description);
+        if (split.ReceiptType != ReceiptType.Owner)
+            return BuildReceiptMemo(receiptCode, split.Description);
+
+        return receipt.IsUtility
+            ? BuildOwnerUtilityMemo(receiptCode, split.Description)
+            : BuildOwnerReceiptMemo(receiptCode, split.Description);
     }
 
     private static string BuildReceiptHeaderMemo(Receipt receipt, ReceiptSplit? firstEligibleSplit)

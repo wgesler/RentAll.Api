@@ -550,7 +550,7 @@ public partial class AccountingManager
     }
 
     // Example: RC-000123: Owner: Utility: City of Littleton - Water
-    public static string BuildOwnerUtilityBillMemo(string receiptCode, string description)
+    public static string BuildOwnerUtilityMemo(string receiptCode, string description)
     {
         if (string.IsNullOrWhiteSpace(receiptCode))
             throw new ArgumentException("Receipt code is required.", nameof(receiptCode));
