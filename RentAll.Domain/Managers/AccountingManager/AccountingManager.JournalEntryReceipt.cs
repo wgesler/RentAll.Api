@@ -21,6 +21,20 @@ public partial class AccountingManager
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
             var created = await CreateReceiptJournalEntriesAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
+
+            var ownerUtilityWarning = await TryCreateOwnerUtilityJournalEntryAsync(
+                receipt,
+                chartOfAccounts,
+                accountingOffice,
+                currentUser,
+                created,
+                trigger: "ReceiptOwnerUtility",
+                sourceType: SourceType.Receipt,
+                documentCode: receipt.ReceiptCode.Trim(),
+                documentDescription: $"receipt {receipt.ReceiptCode.Trim()}");
+            if (ownerUtilityWarning != null)
+                return ownerUtilityWarning;
+
             return AccountingJournalEntryResult.Success(created);
         }
         catch (Exception ex)
