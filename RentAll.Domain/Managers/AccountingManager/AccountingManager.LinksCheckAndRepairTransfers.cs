@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Helpers;
 using RentAll.Domain.Models;
@@ -746,9 +747,63 @@ public partial class AccountingManager
                 ?? "(missing source code)";
             messages.Add(
                 $"Transfer {transferLabel}: split group {groupLabel} amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
+            await LogTransferValidateTraceAsync(transfer, splitGroup, groupLabel, groupAmount, referenceLineId, escrowDepositAccountId);
         }
 
         return messages;
+    }
+
+    private async Task LogTransferValidateTraceAsync(
+        Transfer transfer,
+        IReadOnlyList<TransferSplit> splitGroup,
+        string groupLabel,
+        decimal groupAmount,
+        Guid? referenceLineId,
+        int escrowDepositAccountId)
+    {
+        var (splitPropertyId, splitReservationId) = ResolveTransferSplitGroupContext(splitGroup);
+
+        if (referenceLineId is not { } lineId || lineId == Guid.Empty)
+        {
+            _logger.LogError(
+                "[TransferValidateTrace] Transfer={TransferCode} Group={Group} GroupAmount={GroupAmount} Reason=NoJournalEntryLineId OnGroup SplitCount={SplitCount} SplitProperty={SplitProperty} SplitReservation={SplitReservation} EscrowAccount={EscrowAccount} TransferDate={TransferDate} BankAccount={BankAccount}",
+                transfer.TransferCode, groupLabel, groupAmount, splitGroup.Count,
+                splitPropertyId, splitReservationId, escrowDepositAccountId,
+                transfer.TransferDate, transfer.BankAccountId);
+            return;
+        }
+
+        var line = await GetJournalEntryLineByIdCachedAsync(lineId);
+        if (line == null)
+        {
+            _logger.LogError(
+                "[TransferValidateTrace] Transfer={TransferCode} Group={Group} GroupAmount={GroupAmount} Reason=LineNotFound LineId={LineId}",
+                transfer.TransferCode, groupLabel, groupAmount, lineId);
+            return;
+        }
+
+        var depositJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, transfer.OrganizationId);
+        var allocatedAmount = Math.Abs((transfer.Splits ?? [])
+            .Where(split => split.JournalEntryLineId == lineId)
+            .Sum(split => RoundCurrency(split.Amount)));
+        var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));
+        var depositDate = depositJournalEntry?.DepositId is { } depId && depId != Guid.Empty
+            ? await GetDocumentDepositDateAsync(depId, transfer.OrganizationId)
+            : default;
+        var contextMatches = await SplitLineContextMatchesResolvedLineAsync(
+            splitPropertyId,
+            splitReservationId,
+            line,
+            transfer.OrganizationId,
+            BuildLinkContextHintsFromTransferSplitGroup(splitGroup));
+
+        _logger.LogError(
+            "[TransferValidateTrace] Transfer={TransferCode} Group={Group} GroupAmount={GroupAmount} LineId={LineId} LineAccount={LineAccount} EscrowAccount={EscrowAccount} LineAmount={LineAmount} AllocatedForLine={Allocated} JeCode={JeCode} JeDepositId={JeDepositId} JeDepositCode={JeDepositCode} DepositDate={DepositDate} TransferDate={TransferDate} ContextMatches={ContextMatches} SplitProperty={SplitProperty} SplitReservation={SplitReservation} LineProperty={LineProperty} LineReservation={LineReservation}",
+            transfer.TransferCode, groupLabel, groupAmount, lineId,
+            line.ChartOfAccountId, escrowDepositAccountId, lineAmount, allocatedAmount,
+            depositJournalEntry?.JournalEntryCode, depositJournalEntry?.DepositId, depositJournalEntry?.DepositCode,
+            depositDate, transfer.TransferDate, contextMatches,
+            splitPropertyId, splitReservationId, line.PropertyId, line.ReservationId);
     }
 
     private static IEnumerable<List<TransferSplit>> GroupTransferSplitsForReconciliation(IReadOnlyList<TransferSplit> splits)
