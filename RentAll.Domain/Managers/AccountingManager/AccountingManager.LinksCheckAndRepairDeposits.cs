@@ -10,10 +10,58 @@ public partial class AccountingManager
     #region Prepare Deposit And Transfer For Save
     private async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
     {
+        await ValidateDepositSplitPaymentDatesAsync(deposit);
         await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
         await EnrichDepositSplitsFromJournalEntryLinesAsync(deposit);
         ApplyDepositHeaderContextFromSplits(deposit);
         return deposit;
+    }
+
+    /// <summary>
+    /// A deposit cannot include a payment dated after the deposit date. The split link
+    /// rematch silently refuses those, leaving the split unlinked, so block the save here
+    /// (before reconcile can clear the line that identifies the payment) and tell the user.
+    /// Runs on both create and update via PrepareDepositForSaveAsync.
+    /// </summary>
+    private async Task ValidateDepositSplitPaymentDatesAsync(Deposit deposit)
+    {
+        if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.DepositDate == default)
+            return;
+
+        var messages = new List<string>();
+        var reportedPaymentIds = new HashSet<Guid>();
+        foreach (var split in deposit.Splits)
+        {
+            if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                continue;
+
+            var line = await GetJournalEntryLineByIdCachedAsync(lineId);
+            if (line == null)
+                continue;
+
+            var journalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
+            if (journalEntry?.PaymentId is not { } paymentId || paymentId == Guid.Empty)
+                continue;
+
+            if (!reportedPaymentIds.Add(paymentId))
+                continue;
+
+            var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
+            if (payment == null || payment.PaymentDate == default)
+                continue;
+
+            if (payment.PaymentDate <= deposit.DepositDate)
+                continue;
+
+            var paymentLabel = string.IsNullOrWhiteSpace(payment.PaymentCode)
+                ? paymentId.ToString()
+                : payment.PaymentCode.Trim();
+            messages.Add(
+                $"Payment {paymentLabel} is dated {payment.PaymentDate:yyyy-MM-dd}, after the deposit date {deposit.DepositDate:yyyy-MM-dd}. Change the deposit date or remove that payment before saving.");
+        }
+
+        if (messages.Count > 0)
+            throw new Exception(string.Join(" ", messages));
     }
 
     private async Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer)
