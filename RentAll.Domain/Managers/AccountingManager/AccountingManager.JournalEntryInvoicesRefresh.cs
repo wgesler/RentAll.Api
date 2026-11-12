@@ -53,12 +53,11 @@ public partial class AccountingManager
             invoice.InvoiceId);
         var existingInvoiceEntries = allInvoiceEntries
             .Where(entry => entry.JournalEntryKindId is JournalEntryKind.Charge or JournalEntryKind.OwnerExpected)
-            .Where(entry => MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod))
             .ToList();
 
         await DeleteOwnerDistributionJournalEntriesForInvoiceAsync(invoice);
 
-        var chargeExisting = existingInvoiceEntries.FirstOrDefault(entry => IsInvoiceChargeJournalEntry(entry, accountsReceivableAccountId));
+        var chargeExisting = SelectLinkedInvoiceJournalEntry(existingInvoiceEntries.Where(entry => IsInvoiceChargeJournalEntry(entry, accountsReceivableAccountId)));
 
         var rebuiltCharge = await CreateJournalEntryFromInvoiceAsync(invoice, chartOfAccounts, accountingOffice, currentUser);
         JournalEntry? updatedCharge = null;

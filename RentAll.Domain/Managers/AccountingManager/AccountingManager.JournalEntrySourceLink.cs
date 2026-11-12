@@ -182,6 +182,14 @@ public partial class AccountingManager
         return true;
     }
 
+    private static JournalEntry? SelectLinkedInvoiceJournalEntry(IEnumerable<JournalEntry> entries)
+    {
+        return entries
+            .OrderBy(entry => entry.JournalEntryCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.JournalEntryId)
+            .FirstOrDefault();
+    }
+
     private static bool MatchesJournalEntryAccountingPeriod(JournalEntry entry, DateOnly accountingPeriod)
     {
         if (entry.AccountingPeriod != default)

@@ -314,6 +314,43 @@ public class InvoiceJournalEntryGapCoverageTests
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 
+    [Fact]
+    public async Task UpdateInvoice_AccountingPeriodChange_UpdatesLinkedChargeJournalEntry()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 31),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            35m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 31));
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+        var originalEntry = context.ActiveJournalEntries.Single(entry =>
+            entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryKindId == JournalEntryKind.Charge);
+        Assert.Equal(new DateOnly(2026, 8, 1), originalEntry.TransactionDate);
+
+        invoice.InvoiceDate = new DateOnly(2026, 9, 1);
+        invoice.AccountingPeriod = new DateOnly(2026, 9, 1);
+        invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        await manager.UpdateInvoiceAsync(invoice);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.JournalEntryKindId == JournalEntryKind.Charge)
+            .ToList();
+        Assert.Single(chargeEntries);
+        Assert.Equal(originalEntry.JournalEntryId, chargeEntries[0].JournalEntryId);
+        Assert.Equal(new DateOnly(2026, 9, 1), chargeEntries[0].TransactionDate);
+        Assert.Equal(new DateOnly(2026, 9, 1), chargeEntries[0].AccountingPeriod);
+    }
+
     [Theory]
     [InlineData("2026-04-30", "2026-05-31", "2026-04-01", "2026-04-30", "Rental Fee (04/30-04/30)", 100)]
     [InlineData("2026-04-01", "2026-05-31", "2026-04-01", "2026-04-30", "Rental Fee (04/01-04/30)", 3000)]
