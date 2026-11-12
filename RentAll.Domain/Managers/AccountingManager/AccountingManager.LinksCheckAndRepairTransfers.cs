@@ -222,8 +222,8 @@ public partial class AccountingManager
             if (escrowLine == null || claimedLineIds.Contains(escrowLine.JournalEntryLineId))
                 continue;
 
-            var fullAmount = Math.Abs(RoundCurrency(escrowLine.Debit - escrowLine.Credit));
-            if (fullAmount <= 0.005m)
+            var fullAmount = RoundCurrency(escrowLine.Debit - escrowLine.Credit);
+            if (Math.Abs(fullAmount) <= 0.005m)
                 continue;
 
             var depositSplits = deposit.Splits.Where(split => Math.Abs(split.Amount) > 0.005m).ToList();
@@ -235,14 +235,14 @@ public partial class AccountingManager
             var complete = true;
             foreach (var depositSplit in depositSplits)
             {
-                var splitAmount = Math.Abs(RoundCurrency(depositSplit.Amount));
+                var splitAmount = RoundCurrency(depositSplit.Amount);
                 List<TransferSplit>? found = null;
                 foreach (var group in openGroups)
                 {
                     if (used.Contains(group))
                         continue;
 
-                    var groupAmount = Math.Abs(RoundCurrency(group.Sum(split => split.Amount)));
+                    var groupAmount = RoundCurrency(group.Sum(split => split.Amount));
                     if (Math.Abs(groupAmount - splitAmount) > 0.005m)
                         continue;
 
@@ -268,7 +268,7 @@ public partial class AccountingManager
             if (!complete || matched.Count != depositSplits.Count)
                 continue;
 
-            var matchedTotal = Math.Abs(RoundCurrency(matched.Sum(group => group.Sum(split => split.Amount))));
+            var matchedTotal = RoundCurrency(matched.Sum(group => group.Sum(split => split.Amount)));
             if (Math.Abs(matchedTotal - fullAmount) > 0.005m)
                 continue;
 
