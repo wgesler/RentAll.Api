@@ -87,6 +87,18 @@ public partial class AccountingManager
         }
 
         var allocationTotal = loadResult.Applications.Sum(application => application.PaymentLedgerLine.Amount);
+        if (loadResult.FailedLines.Count == 0
+            && loadResult.SkippedLines.Count == 0
+            && allocationTotal != payment.Amount)
+        {
+            payment.Amount = allocationTotal;
+            payment.ModifiedBy = currentUser;
+            payment = await _accountingRepository.UpdatePaymentAsync(payment);
+            if (_officeSyncCache != null)
+                _officeSyncCache.PaymentsById[payment.PaymentId] = payment;
+            result.Note($"Payment header amount set to allocation total {allocationTotal:0.00}.");
+        }
+
         if (allocationTotal != payment.Amount)
         {
             var diagnostic = BuildPaymentAllocationDiagnosticMessage(payment, loadResult, allocationTotal);
@@ -381,8 +393,7 @@ public partial class AccountingManager
                 application.Invoice,
                 application.PaymentLedgerLine,
                 existingPaymentEntries,
-                currentUser,
-                createMainCashJournalEntry: false);
+                currentUser);
 
             if (paymentResult.HasWarning)
                 result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
