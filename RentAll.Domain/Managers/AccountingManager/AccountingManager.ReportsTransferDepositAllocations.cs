@@ -170,7 +170,8 @@ public partial class AccountingManager
     {
         escrowAmount = RoundTransferEscrowAmount(escrowAmount);
         var depositId = deposit.DepositId;
-        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId);
+        var (linePropertyId, lineReservationId) = await ReadTransferEscrowLineContextAsync(escrowJournalEntryLineId);
+        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId, escrowJournalEntryLineId, linePropertyId, lineReservationId);
 
         if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
             return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
@@ -186,7 +187,7 @@ public partial class AccountingManager
             if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
                 deposit = await _accountingRepository.UpdateDepositAsync(deposit);
 
-            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId ?? matchedSplit.DepositSplitId);
+            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId ?? matchedSplit.DepositSplitId, escrowJournalEntryLineId, linePropertyId, lineReservationId);
         }
 
         var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit, undepositedFundsAccountId);
@@ -661,7 +662,16 @@ public partial class AccountingManager
 
     #region Deposit Split Identification
 
-    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount, int? depositSplitId = null)
+    private async Task<(Guid? PropertyId, Guid? ReservationId)> ReadTransferEscrowLineContextAsync(Guid? escrowJournalEntryLineId)
+    {
+        if (escrowJournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+            return (null, null);
+
+        var line = await GetJournalEntryLineByIdCachedAsync(lineId);
+        return (line?.PropertyId, line?.ReservationId);
+    }
+
+    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount, int? depositSplitId = null, Guid? journalEntryLineId = null, Guid? propertyId = null, Guid? reservationId = null)
     {
         var splits = (deposit.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m)
@@ -678,7 +688,16 @@ public partial class AccountingManager
                 return byId;
         }
 
-        // Deposit splits link to UF payment lines — disambiguate by invoice + property + amount.
+        if (journalEntryLineId is { } lineId && lineId != Guid.Empty)
+        {
+            var byLine = splits
+                .Where(split => split.JournalEntryLineId == lineId)
+                .ToList();
+            if (byLine.Count == 1)
+                return byLine[0];
+        }
+
+        // Same amount can appear on several splits. Property and reservation pick the selected line.
         var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
         if (Math.Abs(roundedEscrowAmount) > 0.005m)
         {
@@ -691,6 +710,12 @@ public partial class AccountingManager
 
             if (amountMatches.Count > 1)
             {
+                var contextMatches = amountMatches
+                    .Where(split => SplitMatchesTransferContext(split, propertyId, reservationId))
+                    .ToList();
+                if (contextMatches.Count == 1)
+                    return contextMatches[0];
+
                 throw new InvalidOperationException(
                     $"Deposit {deposit.DepositCode} has multiple splits matching escrow amount {roundedEscrowAmount:0.00}.");
             }
@@ -701,6 +726,22 @@ public partial class AccountingManager
 
         throw new InvalidOperationException(
             $"Could not identify a deposit split for deposit {deposit.DepositCode} and escrow amount {escrowAmount:0.00}.");
+    }
+
+    private static bool SplitMatchesTransferContext(DepositSplit split, Guid? propertyId, Guid? reservationId)
+    {
+        var hasProperty = propertyId is { } property && property != Guid.Empty;
+        var hasReservation = reservationId is { } reservation && reservation != Guid.Empty;
+        if (!hasProperty && !hasReservation)
+            return false;
+
+        if (hasProperty && split.PropertyId != propertyId)
+            return false;
+
+        if (hasReservation && split.ReservationId != reservationId)
+            return false;
+
+        return true;
     }
 
     #endregion
