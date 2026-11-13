@@ -179,9 +179,6 @@ public partial class AccountingManager
             if (current == null)
                 return;
 
-            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(current);
-
             var restoredPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(revertPayment, revertAllocations, currentUser);
             await CreateJournalEntriesFromOwnerPaymentDocumentAsync(restoredPayment.PaymentId, revertPayment.OrganizationId, currentUser);
         }

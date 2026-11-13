@@ -70,8 +70,6 @@ public partial class AccountingManager
 
         try
         {
-            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(existing);
             await ReverseBillPaymentApplicationsAsync(existing, currentUser);
 
             var updatedPayment = await _accountingRepository.UpdatePaymentWithBillAllocationsAsync(payment, allocations, currentUser);
@@ -97,8 +95,6 @@ public partial class AccountingManager
             if (current == null)
                 return;
 
-            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(current);
             await ReverseBillPaymentApplicationsAsync(current, currentUser);
 
             var preparedApplications = await PrepareBillPaymentApplicationsAsync(revertPayment, revertAllocations, currentUser);

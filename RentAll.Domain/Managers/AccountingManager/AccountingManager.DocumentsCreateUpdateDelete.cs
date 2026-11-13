@@ -552,7 +552,6 @@ public partial class AccountingManager
             throw new Exception($"Payment {paymentLabel} is on a deposit and cannot be deleted.");
         }
 
-        await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
         await DeleteJournalEntriesForPaymentAsync(payment);
 
         if (payment.PaymentKindId == (int)PaymentKind.Invoice)

@@ -2630,12 +2630,6 @@ public partial class AccountingManager
 
         try
         {
-            if (existing.DepositId is not { } depositedId || depositedId == Guid.Empty)
-            {
-                await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-                await DeleteJournalEntriesForPaymentAsync(existing);
-            }
-
             var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
@@ -2658,9 +2652,6 @@ public partial class AccountingManager
             var current = await _accountingRepository.GetPaymentByIdAsync(revertPayment.PaymentId, revertPayment.OrganizationId);
             if (current == null)
                 return;
-
-            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(current);
 
             var restoredPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(revertPayment, revertAllocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(restoredPayment.PaymentId, revertPayment.OrganizationId, currentUser);

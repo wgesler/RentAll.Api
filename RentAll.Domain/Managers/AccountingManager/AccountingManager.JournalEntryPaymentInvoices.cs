@@ -855,12 +855,6 @@ public partial class AccountingManager
         journalEntry.PaymentCode = payment.PaymentCode.Trim();
     }
 
-    private static void ClearPaymentDocumentLink(JournalEntry journalEntry)
-    {
-        journalEntry.PaymentId = null;
-        journalEntry.PaymentCode = null;
-    }
-
     private async Task SyncPaymentDocumentLinksAsync(Payment payment, Guid currentUser)
     {
         if (payment.PaymentId == Guid.Empty)
@@ -884,8 +878,6 @@ public partial class AccountingManager
             }
         }
 
-        await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
-
         Deposit? depositedOn = null;
         if (payment.DepositId is { } depositId && depositId != Guid.Empty)
             depositedOn = await _accountingRepository.GetDepositByIdAsync(depositId, payment.OrganizationId);
@@ -905,7 +897,6 @@ public partial class AccountingManager
             await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
         }
 
-        /* Consolidated invoice payment JEs (SourceType.InvoicePayment) are not returned by PaymentId lookup after clear. */
         foreach (var journalEntry in await GetJournalEntriesForSourceAsync(
                      payment.OrganizationId,
                      payment.OfficeId,
@@ -972,24 +963,6 @@ public partial class AccountingManager
 
             foreach (var journalEntry in paymentEntries)
                 await StampPaymentDocumentLinkAsync(journalEntry);
-        }
-    }
-
-    private async Task ClearPaymentDocumentLinksAsync(Guid organizationId, Guid paymentId, Guid currentUser)
-    {
-        if (paymentId == Guid.Empty)
-            return;
-
-        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId);
-
-        foreach (var journalEntry in linkedEntries)
-        {
-            if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
-                continue;
-
-            ClearPaymentDocumentLink(journalEntry);
-            journalEntry.ModifiedBy = currentUser;
-            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
         }
     }
     #endregion
