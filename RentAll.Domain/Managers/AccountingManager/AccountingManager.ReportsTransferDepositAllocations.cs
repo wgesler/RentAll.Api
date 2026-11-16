@@ -389,47 +389,44 @@ public partial class AccountingManager
             .Select((split, index) => (split, index))
             .Where(item => Math.Abs(item.split.Amount) > 0.005m
                 && (item.split.JournalEntryLineId is null || item.split.JournalEntryLineId == Guid.Empty))
-            .GroupBy(
-                item => string.IsNullOrWhiteSpace(item.split.Description)
-                    ? $"split:{item.index}"
-                    : item.split.Description.Trim(),
-                StringComparer.OrdinalIgnoreCase)
+            .GroupBy(item => BuildTransferReportSplitGroupKey(item.split), StringComparer.OrdinalIgnoreCase)
             .Select(group => group.Select(item => item.split).ToList());
     }
 
     private static string BuildSecurityDepositTransferReportGroupKey(TransferSplit split)
     {
-        var description = (split.Description ?? string.Empty).Trim();
-        var colon = description.IndexOf(':');
-        if (colon > 0)
-        {
-            var invoiceCode = description[..colon].Trim();
-            if (invoiceCode.StartsWith("R-", StringComparison.OrdinalIgnoreCase))
-                return invoiceCode;
-        }
-
         var propertyId = split.PropertyId is { } property && property != Guid.Empty ? property : Guid.Empty;
         var reservationId = split.ReservationId is { } reservation && reservation != Guid.Empty ? reservation : Guid.Empty;
-        if (propertyId != Guid.Empty || reservationId != Guid.Empty)
-            return $"{propertyId:N}|{reservationId:N}";
+        var lineId = split.JournalEntryLineId ?? Guid.Empty;
+        var description = NormalizeSecurityDepositReportDescription(split.Description);
+        if (propertyId != Guid.Empty || reservationId != Guid.Empty || lineId != Guid.Empty)
+            return $"{propertyId:N}|{reservationId:N}|{lineId:N}|{description}";
 
-        return BuildTransferReportSplitGroupKey(split);
+        return split.TransferSplitId > 0
+            ? $"split:{split.TransferSplitId}"
+            : BuildTransferReportSplitGroupKey(split);
+    }
+
+    private static string NormalizeSecurityDepositReportDescription(string? description)
+    {
+        var value = (description ?? string.Empty).Trim();
+        if (value.EndsWith(" TBR", StringComparison.OrdinalIgnoreCase))
+            value = value[..^4].Trim();
+        return value;
     }
 
     private static string BuildTransferReportSplitGroupKey(TransferSplit split)
     {
         var lineId = split.JournalEntryLineId ?? Guid.Empty;
+        var propertyId = split.PropertyId is { } property && property != Guid.Empty ? property : Guid.Empty;
+        var reservationId = split.ReservationId is { } reservation && reservation != Guid.Empty ? reservation : Guid.Empty;
         var description = (split.Description ?? string.Empty).Trim();
-        if (lineId != Guid.Empty && description.Length > 0)
-            return $"{lineId:N}|{description}";
+        if (lineId != Guid.Empty || propertyId != Guid.Empty || reservationId != Guid.Empty)
+            return $"{lineId:N}|{propertyId:N}|{reservationId:N}|{description}";
 
-        if (lineId != Guid.Empty)
-            return lineId.ToString("N");
-
-        if (description.Length > 0)
-            return description;
-
-        return $"ctx:{split.PropertyId}:{split.ReservationId}:{split.ContactId}";
+        return split.TransferSplitId > 0
+            ? $"split:{split.TransferSplitId}"
+            : $"ctx:{description}";
     }
 
     private static bool IsSecurityDepositCardRefundPayment(Payment payment)
