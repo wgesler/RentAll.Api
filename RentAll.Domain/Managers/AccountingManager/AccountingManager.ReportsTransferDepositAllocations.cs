@@ -333,48 +333,24 @@ public partial class AccountingManager
         var reportSplits = (transfer.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m)
             .ToList();
-        var securityDepositSplits = reportSplits
-            .Where(split => IsSecurityDepositAllocationMemo(split.Description))
-            .ToList();
-        foreach (var group in securityDepositSplits.GroupBy(BuildSecurityDepositTransferReportGroupKey))
-        {
-            results.Add(BuildSecurityDepositTransferReportRow(
-                group.ToList(),
-                transferBankAccountId,
-                escrowDepositAccountId,
-                ownersAccountId,
-                secDepAccountId,
-                sdwAccountId,
-                businessAccountId));
-        }
 
-        var linkedGroups = reportSplits
-            .Where(split => !IsSecurityDepositAllocationMemo(split.Description)
-                && split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
-            .GroupBy(split => BuildTransferReportSplitGroupKey(split));
-
-        foreach (var group in linkedGroups)
+        foreach (var group in reportSplits.GroupBy(BuildTransferReportDepositGroupKey))
         {
             var splits = group.ToList();
-            var classified = await TryClassifyTransferReportGroupAsync(organizationId, transfer.OfficeId, splits, recapContext);
-            results.Add(classified ?? BuildTransferReportLineAllocationFromSplits(
+            var lineId = splits
+                .Select(split => split.JournalEntryLineId)
+                .FirstOrDefault(id => id is { } value && value != Guid.Empty) ?? Guid.Empty;
+            var row = SplitsCarryTransferDestinationAccounts(splits, ownersAccountId, secDepAccountId, sdwAccountId, businessAccountId)
+                ? null
+                : await TryClassifyTransferReportGroupAsync(organizationId, transfer.OfficeId, splits, recapContext);
+            results.Add(row ?? BuildTransferReportLineAllocationFromSplits(
                 splits,
-                splits[0].JournalEntryLineId ?? Guid.Empty,
+                lineId,
                 ownersAccountId,
                 secDepAccountId,
                 sdwAccountId,
-                businessAccountId));
-        }
-
-        foreach (var manualGroup in GroupUnlinkedTransferSplitsForReport(reportSplits.Where(split => !IsSecurityDepositAllocationMemo(split.Description)).ToList()))
-        {
-            results.Add(BuildTransferReportLineAllocationFromSplits(
-                    manualGroup,
-                    Guid.Empty,
-                    ownersAccountId,
-                    secDepAccountId,
-                    sdwAccountId,
-                    businessAccountId));
+                businessAccountId,
+                transferBankAccountId));
         }
 
         return results;
@@ -415,19 +391,24 @@ public partial class AccountingManager
         return value;
     }
 
-    private static string BuildTransferReportSplitGroupKey(TransferSplit split)
+    private static string BuildTransferReportDepositGroupKey(TransferSplit split)
     {
         var lineId = split.JournalEntryLineId ?? Guid.Empty;
         var propertyId = split.PropertyId is { } property && property != Guid.Empty ? property : Guid.Empty;
         var reservationId = split.ReservationId is { } reservation && reservation != Guid.Empty ? reservation : Guid.Empty;
-        var description = (split.Description ?? string.Empty).Trim();
-        if (lineId != Guid.Empty || propertyId != Guid.Empty || reservationId != Guid.Empty)
-            return $"{lineId:N}|{propertyId:N}|{reservationId:N}|{description}";
+        if (lineId != Guid.Empty)
+            return $"line:{lineId:N}|{propertyId:N}|{reservationId:N}";
+
+        if (propertyId != Guid.Empty || reservationId != Guid.Empty)
+            return $"deposit:{propertyId:N}|{reservationId:N}|{NormalizeTransferReportDescription(split.Description)}";
 
         return split.TransferSplitId > 0
             ? $"split:{split.TransferSplitId}"
-            : $"ctx:{description}";
+            : $"ctx:{NormalizeTransferReportDescription(split.Description)}";
     }
+
+    private static string BuildTransferReportSplitGroupKey(TransferSplit split)
+        => BuildTransferReportDepositGroupKey(split);
 
     private static bool IsSecurityDepositCardRefundPayment(Payment payment)
         => payment.PaymentTypeId is int paymentTypeId
@@ -548,21 +529,61 @@ public partial class AccountingManager
         };
     }
 
-    private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(IReadOnlyList<TransferSplit> splits, Guid journalEntryLineId, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
+    private static bool SplitsCarryTransferDestinationAccounts(IReadOnlyList<TransferSplit> splits, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
+        => splits.Any(split => IsTransferReportDestinationAccount(split, ownersAccountId, secDepAccountId, sdwAccountId, businessAccountId));
+
+    private static bool IsTransferReportDestinationAccount(TransferSplit split, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
+    {
+        if (split.ChartOfAccountId is not > 0)
+            return false;
+
+        var accountId = split.ChartOfAccountId.Value;
+        return (ownersAccountId is > 0 && accountId == ownersAccountId)
+            || (secDepAccountId is > 0 && accountId == secDepAccountId)
+            || (sdwAccountId is > 0 && accountId == sdwAccountId)
+            || (businessAccountId is > 0 && accountId == businessAccountId);
+    }
+
+    private static string PreferTransferReportDescription(IReadOnlyList<TransferSplit> splits)
+    {
+        var descriptions = splits
+            .Select(split => NormalizeTransferReportDescription(split.Description))
+            .Where(value => value.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return descriptions.FirstOrDefault(value => !value.Equals("Transfer to Escrow Accounts", StringComparison.OrdinalIgnoreCase))
+            ?? descriptions.FirstOrDefault()
+            ?? string.Empty;
+    }
+
+    private static string NormalizeTransferReportDescription(string? description)
+    {
+        var value = (description ?? string.Empty).Trim();
+        const string prefix = "Transfer to Escrow Accounts - ";
+        if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            value = value[prefix.Length..].Trim();
+        if (value.EndsWith(" TBR", StringComparison.OrdinalIgnoreCase))
+            value = value[..^4].Trim();
+        return value;
+    }
+
+    private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(IReadOnlyList<TransferSplit> splits, Guid journalEntryLineId, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId, int? transferBankAccountId)
     {
         var contextSplit = splits[0];
-        var description = splits
-            .Select(split => (split.Description ?? string.Empty).Trim())
-            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
-            ?? string.Empty;
         var (ownerEscrow, secDep, sdw, business) = SumTransferReportSplitsOnce(splits, ownersAccountId, secDepAccountId, sdwAccountId, businessAccountId);
         var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
+        var mainBankAmount = RoundCurrency(splits
+            .Where(split => transferBankAccountId is > 0 && split.ChartOfAccountId == transferBankAccountId)
+            .Sum(split => split.Amount));
+        var escrowAmount = Math.Abs(mainBankAmount) > 0.005m
+            ? NormalizeTransferReportEscrowSourceAmount(mainBankAmount, destinationTotal)
+            : ResolveTransferReportEscrowSourceAmount(splits, destinationTotal);
 
         return new TransferReportLineAllocationResult
         {
             JournalEntryLineId = journalEntryLineId,
             DepositId = Guid.Empty,
-            EscrowAmount = ResolveTransferReportEscrowSourceAmount(splits, destinationTotal),
+            EscrowAmount = escrowAmount,
             OwnerEscrow = ownerEscrow,
             SecDep = secDep,
             Sdw = sdw,
@@ -570,7 +591,7 @@ public partial class AccountingManager
             PropertyId = contextSplit.PropertyId,
             ReservationId = contextSplit.ReservationId,
             ContactId = contextSplit.ContactId,
-            Description = description
+            Description = PreferTransferReportDescription(splits)
         };
     }
 
