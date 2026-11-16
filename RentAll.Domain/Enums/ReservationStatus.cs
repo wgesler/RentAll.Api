@@ -12,5 +12,6 @@ public enum ReservationStatus
     Maintenance = 7,
     OwnerBlocked = 8,
     ArrivalDeparture = 9,
-    Offline = 10
+    Offline = 10,
+    Completed = 11
 }
