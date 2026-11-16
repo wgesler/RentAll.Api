@@ -452,6 +452,8 @@ public partial class AccountingManager
         var sdw = 0m;
         var business = 0m;
         var contextSplit = splits[0];
+        var groupIncludesSecurityDepositAccount = secDepAccountId is > 0
+            && splits.Any(split => split.ChartOfAccountId == secDepAccountId && split.Amount != 0m);
 
         foreach (var split in splits)
         {
@@ -471,7 +473,7 @@ public partial class AccountingManager
             else if (sdwAccountId is > 0 && accountId == sdwAccountId)
                 sdw += amount;
 
-            if (transferBankAccountId is not > 0 || transferBankAccountId == accountId)
+            if (groupIncludesSecurityDepositAccount || transferBankAccountId is not > 0 || transferBankAccountId == accountId)
                 continue;
 
             var credit = RoundCurrency(-amount);
@@ -487,9 +489,12 @@ public partial class AccountingManager
                 sdw += credit;
         }
 
-        var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
-        if (Math.Abs(destinationTotal) > 0.005m)
-            escrow = destinationTotal;
+        if (!groupIncludesSecurityDepositAccount)
+        {
+            var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
+            if (Math.Abs(destinationTotal) > 0.005m)
+                escrow = destinationTotal;
+        }
 
         return new TransferReportLineAllocationResult
         {
