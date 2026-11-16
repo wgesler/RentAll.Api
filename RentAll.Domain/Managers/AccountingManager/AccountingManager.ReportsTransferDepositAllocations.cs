@@ -336,10 +336,10 @@ public partial class AccountingManager
         var securityDepositSplits = reportSplits
             .Where(split => IsSecurityDepositAllocationMemo(split.Description))
             .ToList();
-        if (securityDepositSplits.Count > 0)
+        foreach (var group in securityDepositSplits.GroupBy(BuildSecurityDepositTransferReportGroupKey))
         {
             results.Add(BuildSecurityDepositTransferReportRow(
-                securityDepositSplits,
+                group.ToList(),
                 transferBankAccountId,
                 escrowDepositAccountId,
                 ownersAccountId,
@@ -395,6 +395,25 @@ public partial class AccountingManager
                     : item.split.Description.Trim(),
                 StringComparer.OrdinalIgnoreCase)
             .Select(group => group.Select(item => item.split).ToList());
+    }
+
+    private static string BuildSecurityDepositTransferReportGroupKey(TransferSplit split)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        var colon = description.IndexOf(':');
+        if (colon > 0)
+        {
+            var invoiceCode = description[..colon].Trim();
+            if (invoiceCode.StartsWith("R-", StringComparison.OrdinalIgnoreCase))
+                return invoiceCode;
+        }
+
+        var propertyId = split.PropertyId is { } property && property != Guid.Empty ? property : Guid.Empty;
+        var reservationId = split.ReservationId is { } reservation && reservation != Guid.Empty ? reservation : Guid.Empty;
+        if (propertyId != Guid.Empty || reservationId != Guid.Empty)
+            return $"{propertyId:N}|{reservationId:N}";
+
+        return BuildTransferReportSplitGroupKey(split);
     }
 
     private static string BuildTransferReportSplitGroupKey(TransferSplit split)
@@ -470,6 +489,10 @@ public partial class AccountingManager
             else if (transferBankAccountId == sdwAccountId)
                 sdw += credit;
         }
+
+        var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
+        if (Math.Abs(destinationTotal) > 0.005m)
+            escrow = destinationTotal;
 
         return new TransferReportLineAllocationResult
         {
