@@ -475,6 +475,9 @@ public partial class AccountingManager
     #region Owner Actual Upsert
     private async Task UpsertOwnerActualJournalEntryForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false, Invoice? paymentSourceInvoice = null)
     {
+        if (IsTenantHeldSecurityDepositPayment(paymentLedgerLine))
+            return;
+
         var irsMethodType = await GetOfficeIrsMethodTypeAsync(invoice.OrganizationId, invoice.OfficeId);
         if (irsMethodType == IRSMethodType.IrsNetMethod)
             await UpsertOwnerActualJournalEntryForPaymentNetAsync(invoice, paymentLedgerLine, paymentAmount, transactionDate, workingEntries, retainedEntryIds, currentUser, loadCrossPeriodExpectedContext, paymentSourceInvoice);

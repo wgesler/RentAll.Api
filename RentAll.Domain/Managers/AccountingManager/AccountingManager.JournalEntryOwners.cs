@@ -603,6 +603,9 @@ public partial class AccountingManager
         if (paymentAmount == 0 || paymentLedgerLine.LedgerLineId == Guid.Empty)
             return null;
 
+        if (IsTenantHeldSecurityDepositPayment(paymentLedgerLine))
+            return null;
+
         if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out _))
             return null;
 
@@ -653,6 +656,9 @@ public partial class AccountingManager
     private async Task<(decimal FullRent, decimal OwnerShare)?> CalculateOwnerActualAmountForInvoicePaymentGrossAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine paymentLedgerLine, decimal paymentAmount, IReadOnlyList<JournalEntry>? workingEntries = null)
     {
         if (paymentAmount == 0 || paymentLedgerLine.LedgerLineId == Guid.Empty)
+            return null;
+
+        if (IsTenantHeldSecurityDepositPayment(paymentLedgerLine))
             return null;
 
         if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out _))
@@ -756,6 +762,7 @@ public partial class AccountingManager
     private static List<LedgerLine> GetOrderedInvoicePaymentLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
         => (invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0 && line.LedgerLineId != Guid.Empty)
+            .Where(line => !IsTenantHeldSecurityDepositPayment(line))
             .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
             .OrderBy(line => line.LedgerLineDate)
             .ThenBy(line => line.LineNumber)
