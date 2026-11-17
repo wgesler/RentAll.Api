@@ -210,24 +210,25 @@ public partial class AccountingManager
             LineContext = new JournalEntryLineContext(reservation.PropertyId, reservation.PropertyCode, reservation.ReservationId, reservation.ReservationCode, contactId, reservation.ContactName)
         };
 
+        Payment? applicationPayment = null;
         Payment? refundPayment = null;
         Transfer? allocationTransfer = null;
         Invoice? refundInvoice = null;
-        Invoice? creditedInvoice = null;
         var chargeAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById).Sum(line => line.Amount));
-        var creditLine = BuildSecurityDepositCreditLine(depositContext, ResolveSecurityDepositCreditCostCodeId(invoices, office, costCodeById), costCodeById);
         try
         {
-            var returnInvoice = FindOutstandingSecurityDepositReturnInvoice(invoices, costCodeById);
-            if (returnInvoice == null)
+            var outstandingInvoices = FindOutstandingSecurityDepositReturnInvoices(invoices, costCodeById);
+            Invoice returnInvoice;
+            if (outstandingInvoices.Count == 0)
             {
+                var creditLine = BuildSecurityDepositCreditLine(depositContext, ResolveSecurityDepositCreditCostCodeId(invoices, office, costCodeById), costCodeById);
                 refundInvoice = await CreateSecurityDepositRefundInvoiceAsync(reservation, paymentDate, creditLine, currentUser);
                 returnInvoice = refundInvoice;
             }
             else
             {
-                returnInvoice = await AddSecurityDepositCreditLineAsync(returnInvoice, creditLine, currentUser);
-                creditedInvoice = returnInvoice;
+                applicationPayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, outstandingInvoices.Select(invoice => invoice.InvoiceId).ToList(), costCodeById, officeAccess);
+                returnInvoice = outstandingInvoices[^1];
             }
 
             var refundAmount = RoundSecurityDepositAmount(amount);
@@ -245,8 +246,8 @@ public partial class AccountingManager
                 await DeleteTransferAsync(allocationTransfer.TransferId, organizationId, currentUser);
             if (refundPayment != null)
                 await DeletePaymentAsync(refundPayment.PaymentId, organizationId, currentUser);
-            if (creditedInvoice != null)
-                await RemoveSecurityDepositCreditLinesAsync(creditedInvoice.InvoiceId, organizationId, currentUser);
+            if (applicationPayment != null)
+                await DeletePaymentAsync(applicationPayment.PaymentId, organizationId, currentUser);
             if (refundInvoice != null)
                 await DeleteInvoiceAsync(refundInvoice.InvoiceId, organizationId, currentUser);
             throw;
@@ -476,13 +477,14 @@ public partial class AccountingManager
 
     #region Deposit Application
 
-    private static Invoice? FindOutstandingSecurityDepositReturnInvoice(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static List<Invoice> FindOutstandingSecurityDepositReturnInvoices(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         return invoices
             .Where(invoice => invoice.IsActive)
+            .Where(invoice => CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) > 0m)
             .OrderBy(invoice => invoice.InvoiceDate)
             .ThenBy(invoice => invoice.InvoiceCode)
-            .LastOrDefault(invoice => CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) > 0m);
+            .ToList();
     }
 
     private async Task<Invoice> CreateSecurityDepositRefundInvoiceAsync(Reservation reservation, DateOnly paymentDate, LedgerLine creditLine, Guid currentUser)
@@ -521,14 +523,60 @@ public partial class AccountingManager
         return await CreateInvoiceAsync(invoice, currentUser);
     }
 
-    private async Task<Invoice> AddSecurityDepositCreditLineAsync(Invoice invoice, LedgerLine creditLine, Guid currentUser)
+    private async Task<Payment> CreateSecurityDepositInvoicePaymentAsync(SecurityDepositContext context, IReadOnlyList<Guid> invoiceIds, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess)
     {
-        creditLine.InvoiceId = invoice.InvoiceId;
-        creditLine.LineNumber = invoice.LedgerLines.Count == 0 ? 1 : invoice.LedgerLines.Max(line => line.LineNumber) + 1;
-        invoice.LedgerLines.Add(creditLine);
-        invoice.TotalAmount += creditLine.Amount;
-        invoice.ModifiedBy = currentUser;
-        return await UpdateInvoiceAsync(invoice);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
+        var (office, _) = await LoadOfficeCostCodeContextAsync(context.OrganizationId, context.OfficeId);
+        var appliedCostCodeId = ResolveAppliedSecurityDepositPaymentCostCodeId(office, costCodeById);
+        costCodeById.TryGetValue(appliedCostCodeId, out var appliedCostCode);
+        var appliedAccountId = GetChartOfAccountIdByCostCode(
+            chartOfAccounts,
+            context.OfficeId,
+            appliedCostCode,
+            GetDefaultSecurityDepositAccount(chartOfAccounts, context.OfficeId, office, costCodeById, accountingOffice));
+        var payment = new Payment
+        {
+            OrganizationId = context.OrganizationId,
+            OfficeId = context.OfficeId,
+            PaymentDate = context.PaymentDate,
+            Amount = context.CollectedAmount,
+            CostCodeId = appliedCostCodeId,
+            Description = context.Memo,
+            PaymentKindId = (int)PaymentKind.Invoice,
+            PaymentTypeId = (int)PaymentType.SecurityDeposit,
+            ChartOfAccountId = appliedAccountId,
+            IsActive = true,
+            CreatedBy = context.CurrentUser
+        };
+
+        return await ApplyInvoicePaymentAsync(payment, invoiceIds, null, officeAccess, context.CurrentUser);
+    }
+
+    private static int ResolveAppliedSecurityDepositPaymentCostCodeId(Office? office, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (office?.SecurityDepositCcId is not int securityDepositCcId
+            || securityDepositCcId <= 0
+            || !costCodeById.TryGetValue(securityDepositCcId, out var securityDepositCostCode)
+            || string.IsNullOrWhiteSpace(securityDepositCostCode.Code))
+            throw new Exception("No Security Deposit cost code is configured for this office");
+
+        var paymentCostCodes = costCodeById.Values
+            .Where(code => code.IsActive
+                && code.TransactionType == TransactionType.Payment
+                && string.Equals(code.Code, securityDepositCostCode.Code, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var appliedCostCode = paymentCostCodes
+            .Where(code => code.Description.Contains("Applied", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(code => code.CostCodeId)
+            .FirstOrDefault()
+            ?? paymentCostCodes
+                .Where(code => !code.Description.Contains("Refund", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(code => code.CostCodeId)
+                .FirstOrDefault();
+        if (appliedCostCode == null)
+            throw new Exception($"No payment cost code is configured for security deposit account {securityDepositCostCode.Code}");
+
+        return appliedCostCode.CostCodeId;
     }
 
     private async Task RemoveSecurityDepositCreditLinesAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
@@ -1028,21 +1076,26 @@ public partial class AccountingManager
 
     private static decimal CalculateInvoiceNonSecurityDepositNetDue(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlySet<Guid>? ignoredPaymentIds = null)
     {
-        // Same total the invoice editor shows for rent and fees: charges minus payments, excluding security-deposit charges.
-        var chargeTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
+        // Every payment on the invoice applies to its charge lines in line order, whatever cost code the payment used.
+        // Only the unpaid remainder on non-deposit charge lines counts, capped by the invoice balance (charges minus payments).
+        var invoiceChargeTotal = (invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line => !IsRefundableSecurityDepositCharge(line, costCodeById))
             .Where(line => !IsIgnoredSecurityDepositCredit(line, costCodeById, ignoredPaymentIds))
-            .Sum(line => line.Amount));
-
-        var paymentTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
+            .Sum(line => line.Amount);
+        var invoicePaymentTotal = (invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
             .Where(line => !IsIgnoredSecurityDepositPayment(line, ignoredPaymentIds))
-            .Sum(line => line.Amount));
+            .Sum(line => line.Amount);
+        var invoiceBalance = Math.Max(0m, invoiceChargeTotal - invoicePaymentTotal);
 
-        return Math.Max(0m, RoundSecurityDepositAmount(chargeTotal - paymentTotal));
+        var nonSecurityDepositRemaining = CalculateReservationChargeLineBalances([invoice], costCodeById, ignoredPaymentIds)
+            .Where(entry => entry.Remaining > 0m)
+            .Where(entry => !IsRefundableSecurityDepositCharge(entry.Line, costCodeById))
+            .Sum(entry => entry.Remaining);
+
+        return RoundSecurityDepositAmount(Math.Min(invoiceBalance, nonSecurityDepositRemaining));
     }
 
    private static List<Invoice> FindSecurityDepositInvoicesForReservation(IReadOnlyList<Invoice> reservationInvoices, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -1415,13 +1468,21 @@ public partial class AccountingManager
         var lines = new List<SecurityDepositDetailLine>();
         foreach (var invoice in invoices)
         {
-            if (CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById, ignoredPaymentIds) <= 0m)
+            var invoiceDue = CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById, ignoredPaymentIds);
+            if (invoiceDue <= 0m)
                 continue;
 
-            lines.AddRange(CalculateReservationChargeLineBalances([invoice], costCodeById, ignoredPaymentIds)
+            foreach (var entry in CalculateReservationChargeLineBalances([invoice], costCodeById, ignoredPaymentIds)
                 .Where(entry => entry.Remaining > 0m)
-                .Where(entry => !IsRefundableSecurityDepositCharge(entry.Line, costCodeById))
-                .Select(entry => CreateSecurityDepositDetailLine(entry.Invoice, entry.Line, entry.Remaining, null, null)));
+                .Where(entry => !IsRefundableSecurityDepositCharge(entry.Line, costCodeById)))
+            {
+                if (invoiceDue <= 0m)
+                    break;
+
+                var amount = Math.Min(entry.Remaining, invoiceDue);
+                invoiceDue -= amount;
+                lines.Add(CreateSecurityDepositDetailLine(entry.Invoice, entry.Line, amount, null, null));
+            }
         }
 
         return lines
@@ -1839,6 +1900,13 @@ public partial class AccountingManager
         return string.Equals(value, BuildSecurityDepositPaymentMemo(code), StringComparison.OrdinalIgnoreCase)
             || string.Equals(value, $"{code}: Security Deposit Payment", StringComparison.OrdinalIgnoreCase)
             || string.Equals(value, $"{code}: Security Deposit", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSecurityDepositReturnPaymentLine(LedgerLine line)
+    {
+        var description = line.Description ?? string.Empty;
+        return IsSecurityDepositRefundMemo(description)
+            || description.Contains(": Security Deposit Re-Payment", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsTenantHeldSecurityDepositPayment(LedgerLine line)

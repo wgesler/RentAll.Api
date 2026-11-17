@@ -107,6 +107,28 @@ public class SecurityDepositCreditScenarioTests
         Assert.Equal(23m, figures.Balance);
     }
 
+    [Fact]
+    public void DepositPaidWithOrdinaryPayment_UnpaidChargeStillOutstanding()
+    {
+        var (_, _, costCodeById) = CreateManager();
+        var invoice = BuildInvoice("R-000001-001", new DateOnly(2026, 10, 1),
+        [
+            ChargeLine(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, 1851.17m, "Rent"),
+            ChargeLine(AccountingManagerJournalEntryFeeTestSupport.SecurityDepositCostCodeId, 2000m, "Security Deposit"),
+            ChargeLine(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, 82.58m, "Sewer"),
+            ChargeLine(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, 500m, "Pet Deposit")
+        ]);
+        AddLine(invoice, PaymentLine(500m, Guid.NewGuid(), "ACH - Deposit"));
+        AddLine(invoice, PaymentLine(1851.17m, Guid.NewGuid(), "ACH - Rent"));
+        AddLine(invoice, PaymentLine(2000m, Guid.NewGuid(), "ACH - Security Deposit"));
+
+        var netDue = (decimal)InvokeStatic("CalculateInvoiceNonSecurityDepositNetDue", invoice, costCodeById, null)!;
+        var outstanding = SumAmounts(InvokeStatic("BuildOutstandingChargeLines", new List<Invoice> { invoice }, costCodeById, null));
+
+        Assert.Equal(82.58m, netDue);
+        Assert.Equal(82.58m, outstanding);
+    }
+
     private sealed record Figures(
         decimal NetDueAfter,
         decimal Owed,

@@ -156,6 +156,16 @@ public partial class AccountingManager
             if (paymentLedgerLine.LedgerLineId == Guid.Empty)
                 return AccountingJournalEntryResult.WarningResult("LedgerLineId is required to create a payment journal entry");
 
+            // Security deposit re-payment and refund post only their own payment JE (no prepayment, owner, or escrow side effects).
+            if (IsSecurityDepositReturnPaymentLine(paymentLedgerLine))
+            {
+                await DeleteClaimedOrphanJournalEntriesAsync(
+                    workingEntries,
+                    invoice.OrganizationId,
+                    paymentLedgerLine.PaymentId);
+                return AccountingJournalEntryResult.Success(null);
+            }
+
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
             var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
             var splitAllocations = await GetInvoicePaymentSplitAllocationsAsync(invoice, paymentLedgerLine);
