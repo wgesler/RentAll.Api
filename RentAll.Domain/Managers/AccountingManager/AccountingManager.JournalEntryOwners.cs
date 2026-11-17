@@ -493,7 +493,9 @@ public partial class AccountingManager
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
-            TransactionDate = transactionDate,
+            TransactionDate = invoice.AccountingPeriod != default
+                ? invoice.AccountingPeriod
+                : transactionDate,
             AccountingPeriod = invoice.AccountingPeriod != default
                 ? invoice.AccountingPeriod
                 : FirstDayOfMonth(transactionDate),
@@ -545,9 +547,9 @@ public partial class AccountingManager
             return null;
 
         var memo = BuildOwnerActualRentMemo(invoice, paymentLedgerLine);
-        var ownerActualDate = transactionDate;
-        if (invoice.AccountingPeriod != default && transactionDate < invoice.AccountingPeriod)
-            ownerActualDate = invoice.AccountingPeriod;
+        var ownerActualDate = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod
+            : transactionDate;
 
         var paidInFull = prior == 0m && Math.Abs(incremental.Value - ownerShare) <= 0.005m;
         var journalEntryLines = paidInFull

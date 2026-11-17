@@ -391,7 +391,11 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 .ReturnsAsync((IReadOnlyList<Invoice> invoices) =>
                 {
                     foreach (var invoice in invoices)
+                    {
+                        foreach (var line in invoice.LedgerLines.Where(line => line.LedgerLineId == Guid.Empty))
+                            line.LedgerLineId = Guid.NewGuid();
                         _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
+                    }
                     return invoices.Select(CloneInvoice).ToList();
                 });
             accountingRepository
@@ -737,6 +741,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 Description = payment.Description,
                 PaymentKindId = payment.PaymentKindId,
                 PaymentTypeId = payment.PaymentTypeId,
+                ChartOfAccountId = payment.ChartOfAccountId,
                 DepositId = payment.DepositId,
                 DepositCode = payment.DepositCode,
                 PostingStatusId = payment.PostingStatusId,

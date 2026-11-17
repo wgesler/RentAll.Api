@@ -109,7 +109,7 @@ public partial class AccountingManager
         IReadOnlyList<Reservation> reservations,
         Guid currentUser)
     {
-        var asOfDate = DateOnly.FromDateTime(DateTime.Today);
+        var asOfDate = DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
 
         foreach (var reservation in reservations)
         {

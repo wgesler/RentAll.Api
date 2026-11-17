@@ -606,7 +606,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(ownerActualEntries);
         Assert.Equal(invoice.InvoiceId, ownerActualEntry.SourceId);
-        Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
+        Assert.Equal(accountingPeriod, ownerActualEntry.TransactionDate);
         Assert.Equal(accountingPeriod, ownerActualEntry.AccountingPeriod);
         AssertBalancedJournalEntry(ownerActualEntry);
 
@@ -648,7 +648,7 @@ public class InvoiceJournalEntryGapCoverageTests
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
 
         Assert.Equal(invoice.InvoiceId, ownerActualEntry.SourceId);
-        Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
+        Assert.Equal(accountingPeriod, ownerActualEntry.TransactionDate);
         AssertBalancedJournalEntry(ownerActualEntry);
 
         const decimal expectedOwnerActual = 1200m;
@@ -1371,7 +1371,7 @@ public class InvoiceJournalEntryGapCoverageTests
             .Sum(line => line.Credit);
 
         Assert.Equal(Math.Round(expectedOwnerRent, 2, MidpointRounding.AwayFromZero), actualOwnerRent);
-        Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
+        Assert.Equal(accountingPeriod, ownerActualEntry.TransactionDate);
     }
 
     private static void AssertBalancedJournalEntry(JournalEntry journalEntry)

@@ -34,7 +34,7 @@ public class OwnerGrossJournalEntryTests
         var ownerActual = Assert.Single(
             context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
-        Assert.Equal(paymentDate, ownerActual.TransactionDate);
+        Assert.Equal(invoice.AccountingPeriod, ownerActual.TransactionDate);
         Assert.True(ownerActual.IsCashOnly);
         AssertGrossOwnerExpectedLines(ownerActual, rent, OwnerShare(rent));
     }

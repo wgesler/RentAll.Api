@@ -34,7 +34,7 @@ internal static class TransferSplitReconciliationTestSupport
     internal static readonly Guid EscrowLineId = Guid.Parse("00000004-0000-0000-0000-000000000001");
     internal static readonly Guid Payment953UfLineId = Guid.Parse("00000005-0000-0000-0000-000000000953");
     internal static readonly Guid Payment953ArLineId = Guid.Parse("00000005-0000-0000-0000-000000001953");
-    internal static readonly Guid R093ArLineId = Guid.Parse("00000007-0000-0000-0000-000000000093");
+    internal static readonly Guid R093ArLineId = Guid.Parse("00000007-0000-0000-0000-000000001093");
     internal static readonly Guid Payment953JeId = Guid.Parse("00000006-0000-0000-0000-000000000953");
     internal static readonly Guid Py953OwnerActualJeId = Guid.Parse("0000000a-0000-0000-0000-000000000953");
     internal static readonly Guid Py953SdwActualJeId = Guid.Parse("0000000b-0000-0000-0000-000000000953");

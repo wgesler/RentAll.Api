@@ -18,7 +18,7 @@ public class AccountingManagerTransferSplitReconciliationTests
             Assert.NotEqual(Guid.Empty, split.JournalEntryLineId);
         });
         Assert.Equal(
-            TransferSplitReconciliationTestSupport.R093ArLineId,
+            TransferSplitReconciliationTestSupport.R093UfLineId,
             transfer.Splits!.First(split =>
                 (split.Description ?? string.Empty).Contains("R-000000093", StringComparison.OrdinalIgnoreCase)).JournalEntryLineId);
         Assert.Equal(

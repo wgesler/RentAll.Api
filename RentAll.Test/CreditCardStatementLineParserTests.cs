@@ -65,7 +65,7 @@ public class CreditCardStatementLineParserTests
     }
 
     [Fact]
-    public void ParseTables_MonthDayWithoutYearUsesCurrentYear()
+    public void ParseTables_MonthDayWithoutYearUsesYearOfToday()
     {
         var text = """
             08/23 COMCAST / XFINITY 800-266-2278 CO 90.27
@@ -73,12 +73,41 @@ public class CreditCardStatementLineParserTests
             09/04 Payment Thank You - Web -2,820.43
             """;
 
-        var extraction = CreditCardStatementLineParser.ParseTables([], text);
+        var extraction = CreditCardStatementLineParser.ParseTables([], text, new DateOnly(2026, 9, 10));
         var charge = Assert.Single(extraction.Lines, line => line.VendorName != null && line.VendorName.Contains("Comcast", StringComparison.OrdinalIgnoreCase));
 
-        Assert.Equal(new DateOnly(DateTime.Today.Year, 8, 23), charge.ChargeDate);
+        Assert.Equal(new DateOnly(2026, 8, 23), charge.ChargeDate);
         Assert.Equal(90.27m, charge.Amount);
-        Assert.Contains(extraction.Lines, line => line.Amount == -24.91m);
+        Assert.Equal(new DateOnly(2026, 8, 19), Assert.Single(extraction.Lines, line => line.Amount == -24.91m).ChargeDate);
+    }
+
+    [Fact]
+    public void ParseTables_DecemberStatementReadInJanuary_UsesPriorYear()
+    {
+        var text = """
+            12/28 COMCAST / XFINITY 800-266-2278 CO 90.27
+            01/02 THE HOME DEPOT #1512 FORT COLLINS CO 24.91
+            """;
+
+        var extraction = CreditCardStatementLineParser.ParseTables([], text, new DateOnly(2027, 1, 5));
+
+        Assert.Equal(new DateOnly(2026, 12, 28), Assert.Single(extraction.Lines, line => line.Amount == 90.27m).ChargeDate);
+        Assert.Equal(new DateOnly(2027, 1, 2), Assert.Single(extraction.Lines, line => line.Amount == 24.91m).ChargeDate);
+    }
+
+    [Fact]
+    public void ParseTables_StatementClosingDate_SetsYearAcrossYearEnd()
+    {
+        var text = """
+            Opening/Closing Date 12/06/25 - 01/05/26
+            12/28 COMCAST / XFINITY 800-266-2278 CO 90.27
+            01/02 THE HOME DEPOT #1512 FORT COLLINS CO 24.91
+            """;
+
+        var extraction = CreditCardStatementLineParser.ParseTables([], text, new DateOnly(2026, 11, 17));
+
+        Assert.Equal(new DateOnly(2025, 12, 28), Assert.Single(extraction.Lines, line => line.Amount == 90.27m).ChargeDate);
+        Assert.Equal(new DateOnly(2026, 1, 2), Assert.Single(extraction.Lines, line => line.Amount == 24.91m).ChargeDate);
     }
 
     [Fact]

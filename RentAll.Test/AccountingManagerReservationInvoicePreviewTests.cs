@@ -11,6 +11,9 @@ namespace RentAll.Test;
 
 public class AccountingManagerReservationInvoicePreviewTests
 {
+    private static readonly DateOnly Today = new(2026, 10, 15);
+    private static readonly DateOnly CurrentMonth = new(Today.Year, Today.Month, 1);
+
     [Theory]
     [InlineData(ProrateType.FirstMonth)]
     [InlineData(ProrateType.SecondMonth)]
@@ -246,7 +249,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_SkipsNightlyCheckoutOnlyDepartureMonth()
     {
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var currentMonth = CurrentMonth;
         var arrival = currentMonth;
         var departure = currentMonth.AddMonths(3);
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -276,7 +279,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_IncludesCheckoutDayForDailyAndMonthlyDepartureMonth()
     {
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var currentMonth = CurrentMonth;
         var arrival = currentMonth.AddMonths(-1);
         var departure = currentMonth.AddMonths(1);
         var dailyReservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -318,7 +321,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_PlatformNightlyCheckoutOnFirst_PutsDepartureFeeOnJuneNotJuly()
     {
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var currentMonth = CurrentMonth;
         var arrival = currentMonth;
         var departure = currentMonth.AddMonths(3);
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -567,7 +570,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetMissingInvoicesAsync_PriorYearRentalLine_DoesNotCoverSameMonthThisYear()
     {
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var currentMonth = CurrentMonth;
         var currentMonthEnd = new DateOnly(currentMonth.Year, currentMonth.Month, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
         var priorMonth = currentMonth.AddYears(-1);
         var priorMonthEnd = new DateOnly(priorMonth.Year, priorMonth.Month, DateTime.DaysInMonth(priorMonth.Year, priorMonth.Month));
@@ -703,7 +706,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetMissingInvoicesAsync_ExtendedStay_IncludesUncoveredDaysOfCurrentMonth()
     {
-        var monthStart = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var monthStart = CurrentMonth;
         var coveredThrough = monthStart.AddDays(14);
         var departure = monthStart.AddDays(21);
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -768,10 +771,7 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetMissingInvoicesAsync_ExtendedStayThrough31st_CapsMonthAt30AndSkipsFirstMonthCharges()
     {
-        var monthStart = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-        while (DateTime.DaysInMonth(monthStart.Year, monthStart.Month) < 31)
-            monthStart = monthStart.AddMonths(-1);
-
+        var monthStart = CurrentMonth;
         var coveredThrough = monthStart.AddDays(14);
         var departure = new DateOnly(monthStart.Year, monthStart.Month, DateTime.DaysInMonth(monthStart.Year, monthStart.Month));
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -1137,7 +1137,8 @@ public class AccountingManagerReservationInvoicePreviewTests
             organizationManager: null!,
             contactRepository.Object,
             new EnabledFeatureFlagService(),
-            healthRepository: null!);
+            healthRepository: null!,
+            timeProvider: new FixedTimeProvider(Today));
     }
 
     private sealed class EnabledFeatureFlagService : IFeatureFlagService

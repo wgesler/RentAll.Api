@@ -8,12 +8,9 @@ namespace RentAll.Test;
 /// </summary>
 public class AccountingManagerTransferCreateIntegrationTests
 {
-    [Fact]
+    [IntegrationFact]
     public async Task CreateTransfer_SelectedDeposits137156142141_SucceedsViaStoredProcs()
     {
-        if (!TransferCreateIntegrationTestSupport.EnsureEnabled())
-            return;
-
         var services = TransferCreateIntegrationTestSupport.CreateServices();
         var scenario = await TransferCreateIntegrationTestSupport.TryLoadScenarioAsync(services);
 
@@ -76,12 +73,9 @@ public class AccountingManagerTransferCreateIntegrationTests
         }
     }
 
-    [Fact]
+    [IntegrationFact]
     public async Task SqlPreflight_SelectedDepositsAndPy953Path_IsReady()
     {
-        if (!TransferCreateIntegrationTestSupport.EnsureEnabled())
-            return;
-
         var services = TransferCreateIntegrationTestSupport.CreateServices();
         var scenario = await TransferCreateIntegrationTestSupport.TryLoadScenarioAsync(services);
 

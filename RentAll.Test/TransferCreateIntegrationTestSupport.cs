@@ -23,6 +23,18 @@ using Xunit.Sdk;
 namespace RentAll.Test;
 
 /// <summary>
+/// Runs only when RENTALL_INTEGRATION_TESTS=1; otherwise the test is reported as skipped.
+/// </summary>
+internal sealed class IntegrationFactAttribute : FactAttribute
+{
+    public IntegrationFactAttribute()
+    {
+        if (!TransferCreateIntegrationTestSupport.IsEnabled)
+            Skip = "Writes to the local GESLER database. Set RENTALL_INTEGRATION_TESTS=1 to run.";
+    }
+}
+
+/// <summary>
 /// Full integration harness for GL Make Transfer against the local GESLER database.
 /// Gathers eligible deposits at run time (not on a transfer, escrow JE, linked splits).
 /// Override via RENTALL_TRANSFER_TEST_OFFICE_ID / RENTALL_TRANSFER_TEST_DEPOSITS when needed.
@@ -51,11 +63,6 @@ internal static class TransferCreateIntegrationTestSupport
 
     internal static bool IsEnabled =>
         string.Equals(Environment.GetEnvironmentVariable("RENTALL_INTEGRATION_TESTS"), "1", StringComparison.OrdinalIgnoreCase);
-
-    internal static bool EnsureEnabled()
-    {
-        return IsEnabled;
-    }
 
     internal sealed class TransferEscrowLineContext
     {

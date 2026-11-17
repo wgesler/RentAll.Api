@@ -27,12 +27,14 @@ public partial class AccountingManager : IAccountingManager
     private readonly IFeatureFlagService _featureFlagService;
     private readonly IHealthRepository _healthRepository;
     private readonly ILogger<AccountingManager> _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)>> _accountContextCache = new();
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<IReadOnlyDictionary<int, CostCode>>> _costCodeByOfficeCache = new();
     private readonly ConcurrentDictionary<AccountResolverCacheKey, int> _defaultAccountIdCache = new();
 
-    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService, IHealthRepository healthRepository, ILogger<AccountingManager>? logger = null)
+    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService, IHealthRepository healthRepository, ILogger<AccountingManager>? logger = null, TimeProvider? timeProvider = null)
     {
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
         _accountingRepository = accountingRepository;

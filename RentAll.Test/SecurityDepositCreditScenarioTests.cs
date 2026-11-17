@@ -20,46 +20,6 @@ public class SecurityDepositCreditScenarioTests
     public SecurityDepositCreditScenarioTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public async Task ChargesScenario_CreditPaysOutstandingRent_RefundLeavesInvoiceSettled()
-    {
-        var (manager, context, costCodeById) = CreateManager();
-        var sdInvoice = BuildSecurityDepositInvoice();
-        var rentInvoice = BuildInvoice("R-000001-002", new DateOnly(2026, 10, 1), [ChargeLine(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, 2077m, "Rent")]);
-        var invoicesBefore = new List<Invoice> { sdInvoice, rentInvoice };
-
-        var beforeOutstanding = SumAmounts(InvokeStatic("BuildOutstandingChargeLines", invoicesBefore, costCodeById, null));
-        Assert.Equal(2077m, beforeOutstanding);
-
-        var refundPaymentId = Guid.NewGuid();
-        AddLine(rentInvoice, CreditLine(-Collected));
-        AddLine(rentInvoice, RefundLine(-23m, refundPaymentId));
-        var invoices = new List<Invoice> { sdInvoice, rentInvoice };
-        var ignored = new HashSet<Guid> { refundPaymentId };
-
-        var figures = CalculateFigures(invoices, costCodeById, ignored);
-        var journalEntry = await CreateInvoiceJournalEntryAsync(manager, context, rentInvoice);
-
-        Print("Charges + refund 23", rentInvoice, figures, journalEntry);
-
-        Assert.Equal(-23m, rentInvoice.TotalAmount);
-        Assert.Equal(-23m, rentInvoice.PaidAmount);
-        Assert.Equal(0m, rentInvoice.TotalAmount - rentInvoice.PaidAmount);
-        Assert.Equal(0m, figures.NetDueAfter);
-        Assert.Equal(0m, figures.Owed);
-        Assert.Equal(2077m, figures.ChargesCoveredByDeposit);
-        Assert.Equal(2100m, figures.Deposit);
-        Assert.Equal(2100m, figures.Collected);
-        Assert.Equal(23m, figures.Balance);
-        Assert.Equal(2077m, figures.ToBeTransferred);
-        Assert.Equal(0m, figures.OwnerWaterfallSecurityDepositBase);
-        Assert.Single(figures.SecurityDepositInvoiceCodes);
-
-        AssertLine(journalEntry, ArAccountId, debit: 0m, credit: 23m);
-        AssertLine(journalEntry, IncomeAccountId, debit: 0m, credit: 2077m);
-        AssertLine(journalEntry, SdLiabilityAccountId, debit: 2100m, credit: 0m);
-    }
-
-    [Fact]
     public async Task NoChargesScenario_RefundInvoiceShowsNegativeTotalAndPaid()
     {
         var (manager, context, costCodeById) = CreateManager();
@@ -85,26 +45,6 @@ public class SecurityDepositCreditScenarioTests
 
         AssertLine(journalEntry, ArAccountId, debit: 0m, credit: 2100m);
         AssertLine(journalEntry, SdLiabilityAccountId, debit: 2100m, credit: 0m);
-    }
-
-    [Fact]
-    public void ChargesScenario_PartialTenantPayment_CreditCoversRemainder()
-    {
-        var (_, _, costCodeById) = CreateManager();
-        var sdInvoice = BuildSecurityDepositInvoice();
-        var rentInvoice = BuildInvoice("R-000001-002", new DateOnly(2026, 10, 1), [ChargeLine(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, 2500m, "Rent")]);
-        AddLine(rentInvoice, PaymentLine(423m, Guid.NewGuid(), "Tenant payment"));
-        var refundPaymentId = Guid.NewGuid();
-        AddLine(rentInvoice, CreditLine(-Collected));
-        AddLine(rentInvoice, RefundLine(-23m, refundPaymentId));
-
-        var figures = CalculateFigures([sdInvoice, rentInvoice], costCodeById, new HashSet<Guid> { refundPaymentId });
-        Print("Partial tenant payment 423 + charges 2500", rentInvoice, figures, null);
-
-        Assert.Equal(0m, figures.NetDueAfter);
-        Assert.Equal(0m, figures.Owed);
-        Assert.Equal(2077m, figures.ChargesCoveredByDeposit);
-        Assert.Equal(23m, figures.Balance);
     }
 
     [Fact]

@@ -775,7 +775,7 @@ public partial class AccountingManager
             officeIds,
             context.ActiveReservations.Select(reservation => reservation.ReservationId).ToList());
 
-        var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
+        var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime));
 
         var activeReservations = context.ActiveReservations
             .OrderBy(reservation => reservation.OfficeName)
