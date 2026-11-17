@@ -1042,9 +1042,6 @@ public class AccountingManagerReservationInvoicePreviewTests
         accountingRepository
             .Setup(r => r.GetBankCardsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
             .ReturnsAsync([]);
-        accountingRepository
-            .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
         var billedRowsByReservationId = new Dictionary<Guid, List<Billed>>();
         accountingRepository
             .Setup(r => r.ReplaceBilledMonthlyRowsForReservationAsync(

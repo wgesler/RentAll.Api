@@ -63,16 +63,6 @@ public partial class AccountingRepository
         });
     }
 
-    public async Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.OwnerInvoiceOutstanding_Backfill", new
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId
-        });
-    }
-
     private static OwnerInvoiceOutstanding ConvertOwnerInvoiceOutstandingEntityToModel(OwnerInvoiceOutstandingEntity entity)
         => new()
         {

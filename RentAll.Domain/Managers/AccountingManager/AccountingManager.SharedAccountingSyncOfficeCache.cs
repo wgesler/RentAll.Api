@@ -38,7 +38,6 @@ public partial class AccountingManager
         public Dictionary<Guid, Guid> PaymentIdByJournalEntryLineId { get; } = new();
         public HashSet<(int SourceTypeId, Guid SourceId)> FullyLoadedSources { get; } = new();
 
-        private readonly Dictionary<(int OfficeId, int EscrowAccountId), List<TransferDepositInvoiceEscrowMatch>> _transferInvoiceMatches = new();
         private readonly Dictionary<(int OfficeId, int EscrowAccountId), List<EscrowDepositLineCandidate>> _escrowCandidates = new();
         private readonly Dictionary<(int OfficeId, int AccountsReceivableAccountId), List<UndepositedPaymentLineCandidate>> _undepositedCandidates = new();
 
@@ -195,7 +194,6 @@ public partial class AccountingManager
 
         private void InvalidateDerivedRematchIndexes()
         {
-            _transferInvoiceMatches.Clear();
             _escrowCandidates.Clear();
             _undepositedCandidates.Clear();
         }
@@ -304,79 +302,6 @@ public partial class AccountingManager
             }
 
             return claimedLineIds;
-        }
-
-        public HashSet<Guid> GetClaimedDepositLineIdsExcluding(Guid depositId)
-        {
-            var claimedLineIds = new HashSet<Guid>();
-            foreach (var otherDeposit in Deposits.ToList())
-            {
-                if (otherDeposit.DepositId == depositId || otherDeposit.IsActive == false)
-                    continue;
-
-                foreach (var split in otherDeposit.Splits ?? [])
-                {
-                    if (split.JournalEntryLineId is { } journalEntryLineId && journalEntryLineId != Guid.Empty)
-                        claimedLineIds.Add(journalEntryLineId);
-                }
-            }
-
-            return claimedLineIds;
-        }
-
-        public List<TransferDepositInvoiceEscrowMatch> GetOrBuildTransferInvoiceMatches(Transfer transfer, int escrowDepositAccountId, Func<Deposit, int, JournalEntryLine?> resolveEscrowLine)
-        {
-            var key = (transfer.OfficeId, escrowDepositAccountId);
-            if (_transferInvoiceMatches.TryGetValue(key, out var cached))
-                return cached.ToList();
-
-            var matches = new List<TransferDepositInvoiceEscrowMatch>();
-            foreach (var deposit in Deposits.ToList())
-            {
-                if (deposit.OfficeId != transfer.OfficeId
-                    || deposit.IsActive == false
-                    || deposit.Splits == null
-                    || deposit.Splits.Count == 0)
-                {
-                    continue;
-                }
-
-                var escrowLine = resolveEscrowLine(deposit, escrowDepositAccountId);
-                if (escrowLine == null)
-                    continue;
-
-                var escrowAmount = RoundCurrency(escrowLine.Debit - escrowLine.Credit);
-                if (Math.Abs(escrowAmount) <= 0.005m)
-                    continue;
-
-                foreach (var split in deposit.Splits)
-                {
-                    if (Math.Abs(split.Amount) <= 0.005m)
-                        continue;
-
-                    var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-                    if (string.IsNullOrWhiteSpace(invoiceSourceCode))
-                        continue;
-
-                    // Cache path: raw split fields only; full invoice/ledger resolution runs on cache miss.
-                    matches.Add(new TransferDepositInvoiceEscrowMatch
-                    {
-                        DepositId = deposit.DepositId,
-                        DepositCode = deposit.DepositCode ?? string.Empty,
-                        EscrowJournalEntryLineId = escrowLine.JournalEntryLineId,
-                        EscrowLineAmount = escrowAmount,
-                        InvoiceSourceCode = invoiceSourceCode,
-                        PropertyId = NormalizeOptionalGuid(split.PropertyId),
-                        ReservationId = NormalizeOptionalGuid(split.ReservationId),
-                        DepositSplitAmount = RoundCurrency(split.Amount),
-                        DepositDate = deposit.DepositDate,
-                        DepositAccountingPeriod = deposit.AccountingPeriod
-                    });
-                }
-            }
-
-            _transferInvoiceMatches[key] = matches;
-            return matches.ToList();
         }
 
         public List<EscrowDepositLineCandidate> GetOrBuildEscrowCandidates(Transfer transfer, int escrowDepositAccountId)

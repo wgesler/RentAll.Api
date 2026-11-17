@@ -99,11 +99,6 @@ public partial class AccountingManager
         return $"{string.Join(": ", codes)}: Payment: {paymentTail}";
     }
 
-    public static string BuildConsolidatedInvoicePaymentUndepositedFundsMemo(
-        IEnumerable<string> invoiceCodes,
-        string? paymentDescription)
-        => BuildInvoicePaymentMemo(invoiceCodes, paymentDescription);
-
     /// <summary>
     /// Keeps the user-entered payment text; strips a leading invoice memo prefix when re-building consolidated UF memos.
     /// </summary>
@@ -292,14 +287,6 @@ public partial class AccountingManager
         var kind = isActual ? "Actual" : "Expected";
         var percentText = officePercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
         return $"{invoiceCode.Trim()}: Owner: {kind}: {description} ({percentText}%)";
-    }
-
-    public static string BuildOwnerManagementFeeMemo(Invoice invoice)
-    {
-        if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
-            throw new ArgumentException("Invoice code is required.", nameof(invoice));
-
-        return $"{invoice.InvoiceCode.Trim()}: Owner: Management Fee";
     }
 
     public static bool IsOwnerManagementFeeMemo(string? memo)

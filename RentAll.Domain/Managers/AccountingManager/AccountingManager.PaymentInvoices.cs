@@ -30,26 +30,6 @@ public partial class AccountingManager
         return [];
     }
 
-    public async Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines)
-    {
-        var costCodes = (await LoadCostCodeByOfficeIdAsync(organizationId, 1)).Values.ToList();
-        foreach (var line in ledgerLines)
-        {
-            var costCode = null as CostCode;
-            switch (line.Description)
-            {
-                case string desc when desc.StartsWith("Office Base", StringComparison.OrdinalIgnoreCase):
-                    costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Office Base"));
-                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
-                    continue;
-                case string desc when desc.StartsWith("Unit Fee", StringComparison.OrdinalIgnoreCase):
-                    costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Unit Fee"));
-                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
-                    continue;
-            }
-        }
-    }
-
     public async Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId)
     {
         var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);

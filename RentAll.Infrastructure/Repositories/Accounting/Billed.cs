@@ -196,16 +196,6 @@ public partial class AccountingRepository
         });
     }
 
-    public async Task DeleteBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.Billed_DeleteByOrganizationAndOfficeIds", new
-        {
-            OrganizationId = organizationId,
-            Offices = officeIds
-        });
-    }
-
     public async Task DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
         Guid organizationId,
         string officeIds,

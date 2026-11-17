@@ -89,7 +89,6 @@ public interface IMaintenanceRepository
     Task<IEnumerable<ReceiptMatch>> GetReceiptMatchesByOrganizationIdAsync(Guid organizationId);
     Task<ReceiptMatch> CreateReceiptMatchAsync(ReceiptMatch match);
     Task<ReceiptMatch> UpdateReceiptMatchAsync(ReceiptMatch match);
-    Task DeleteReceiptMatchByIdAsync(Guid receiptMatchId, Guid organizationId);
     #endregion
 
 }

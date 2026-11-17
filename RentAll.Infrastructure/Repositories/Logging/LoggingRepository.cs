@@ -193,19 +193,6 @@ public class LoggingRepository : ILoggingRepository
     #endregion
 
     #region Database Error Log
-    public async Task AddDatabaseErrorAsync(DatabaseErrorLog errorLog)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Logging.DatabaseErrorLog_Add", new
-        {
-            OrganizationId = errorLog.OrganizationId,
-            OfficeId = errorLog.OfficeId,
-            TableName = errorLog.TableName,
-            Message = errorLog.Message,
-            Exception = errorLog.Exception
-        });
-    }
-
     public async Task<List<DatabaseErrorLog>> GetAllDatabaseErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -253,23 +240,6 @@ public class LoggingRepository : ILoggingRepository
     #endregion
 
     #region General Error Log
-    public async Task AddErrorLogAsync(LoggingErrorLog errorLog)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Logging.GeneralErrorLog_Add", new
-        {
-            OrganizationId = errorLog.OrganizationId,
-            OfficeId = errorLog.OfficeId,
-            ReservationId = errorLog.ReservationId,
-            PropertyId = errorLog.PropertyId,
-            InvoiceId = errorLog.InvoiceId,
-            ReceiptId = errorLog.ReceiptId,
-            JournalEntryId = errorLog.JournalEntryId,
-            Message = errorLog.Message,
-            Exception = errorLog.Exception
-        });
-    }
-
     public async Task<List<LoggingErrorLog>> GetAllGeneralErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

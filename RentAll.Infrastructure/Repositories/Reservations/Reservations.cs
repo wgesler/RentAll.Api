@@ -474,20 +474,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             }
         }
 
-        public async Task<Reservation> IncrementCurrentInvoiceAsync(Guid reservationId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_IncrementInvoiceById", new
-            {
-                ReservationId = reservationId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                throw new Exception("Reservation not found");
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
         public async Task MarkDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy)
         {
             await using var db = new SqlConnection(_dbConnectionString);

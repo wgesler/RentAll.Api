@@ -177,36 +177,6 @@ public static class JournalEntryRecapLineClassifier
         return false;
     }
 
-    public static IEnumerable<string> ExtractReachBackInvoiceCodes(IEnumerable<JournalEntryRecapClassificationLine> inDateRangeLines)
-    {
-        var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in inDateRangeLines.Where(line => line.IsInDateRange))
-        {
-            var kind = line.JournalEntryKindId ?? 0;
-            var sourceDocumentCode = (line.SourceDocumentCode ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(sourceDocumentCode))
-                continue;
-
-            if (kind == (int)JournalEntryKind.Payment
-                && line.DefaultUndepFundsAccountId is > 0
-                && line.ChartOfAccountId == line.DefaultUndepFundsAccountId)
-            {
-                codes.Add(sourceDocumentCode);
-                continue;
-            }
-
-            if (kind is (int)JournalEntryKind.PrePaymentReceive or (int)JournalEntryKind.PrePaymentApply
-                && line.DefaultPrePayAccountId is > 0
-                && line.ChartOfAccountId == line.DefaultPrePayAccountId
-                && line.Credit - line.Debit < 0)
-            {
-                codes.Add(sourceDocumentCode);
-            }
-        }
-
-        return codes;
-    }
-
     private static JournalEntryRecapClassificationResult BuildResult(
         string recapCategory,
         decimal amount,

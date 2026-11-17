@@ -41,11 +41,5 @@ public partial class MaintenanceRepository
         });
         return (rows ?? []).First().ToModel();
     }
-
-    public async Task DeleteReceiptMatchByIdAsync(Guid receiptMatchId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Maintenance.ReceiptMatch_DeleteById", new { ReceiptMatchId = receiptMatchId, OrganizationId = organizationId });
-    }
     #endregion
 }

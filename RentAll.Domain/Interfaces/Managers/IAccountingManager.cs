@@ -7,7 +7,6 @@ public interface IAccountingManager
 {
     #region Ledger Lines
     Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate);
-    Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines);
     Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId);
     Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate);
     List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId);
@@ -128,7 +127,6 @@ public interface IAccountingManager
     int GetDefaultEscrowOwnersAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     int GetDefaultRetainedEarningsAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     int GetDefaultParentRentalIncomeAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice);
-    int GetDefaultParentRentalExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice);
     Task<string> GetRentalIncomeParentAccountIdsAsync(Guid organizationId, string officeIds);
     Task<(string AccountIds, string AccountNos)> GetRentalIncomeParentAccountsAsync(Guid organizationId, string officeIds);
     #endregion

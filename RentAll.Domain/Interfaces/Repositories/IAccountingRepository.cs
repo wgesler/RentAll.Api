@@ -184,7 +184,6 @@ public interface IAccountingRepository
     Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByPropertyIdAsync(Guid organizationId, Guid propertyId);
     Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByCriteriaAsync(Guid organizationId, Guid? propertyId = null, string? officeIds = null, DateOnly? endDate = null);
     Task DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(Guid organizationId, Guid invoiceId);
-    Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null);
     #endregion
 
     #region OwnerReportMonthlyAnchor
@@ -218,7 +217,6 @@ public interface IAccountingRepository
     Task<Billed> UpsertBilledByReservationIdAsync(Billed billed);
     Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed);
     Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
-    Task DeleteBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds);
     Task DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(Guid organizationId, string officeIds, IReadOnlyCollection<Guid> reservationIds);
     Task<Billed?> SetBilledIgnoreByIdAsync(Guid organizationId, int billedId, bool ignore, Guid modifiedBy);
     #endregion

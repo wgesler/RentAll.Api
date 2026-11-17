@@ -32,12 +32,6 @@ public class MaintenanceManager : IMaintenanceManager
         return await _maintenanceRepository.CreateAsync(m);
     }
 
-    public async Task<bool> HasAssociatedInspections(Guid propertyId, Guid organizationId, string officeAccess)
-    {
-        var inspections = await _maintenanceRepository.GetInspectionsByPropertyIdAsync(propertyId, organizationId, officeAccess);
-        return inspections.Any();
-    }
-
     public async Task<bool> CurrentInspectionAlreadyExistsForProperty(Guid propertyId, Guid organizationId, string officeAccess)
     {
         var inspections = await _maintenanceRepository.GetInspectionsByPropertyIdAsync(propertyId, organizationId, officeAccess);

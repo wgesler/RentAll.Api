@@ -17,12 +17,10 @@ public interface ILoggingRepository
     Task DeleteAllApplicationLogsByOrganizationIdAsync(Guid? organizationId);
     Task<ApplicationLog?> GetApplicationLogByIdAsync(int id, Guid? organizationId);
 
-    Task AddDatabaseErrorAsync(DatabaseErrorLog errorLog);
     Task<List<DatabaseErrorLog>> GetAllDatabaseErrorLogsByOrganizationIdAsync(Guid? organizationId);
     Task DeleteAllDatabaseErrorLogsByOrganizationIdAsync(Guid? organizationId);
     Task<DatabaseErrorLog?> GetDatabaseErrorLogByIdAsync(int id, Guid? organizationId);
 
-    Task AddErrorLogAsync(LoggingErrorLog errorLog);
     Task<List<LoggingErrorLog>> GetAllGeneralErrorLogsByOrganizationIdAsync(Guid? organizationId);
     Task DeleteAllGeneralErrorLogsByOrganizationIdAsync(Guid? organizationId);
     Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid? organizationId);

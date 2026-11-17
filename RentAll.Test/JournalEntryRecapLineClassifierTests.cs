@@ -243,27 +243,6 @@ public class JournalEntryRecapLineClassifierTests
         Assert.Equal(1500m, result.Amount);
     }
 
-    [Fact]
-    public void ExtractReachBackInvoiceCodes_UsesKindAndSourceDocumentCode()
-    {
-        var lines = new[]
-        {
-            BuildLine(
-                kind: JournalEntryKind.Payment,
-                sourceTypeId: (int)SourceType.InvoicePayment,
-                chartOfAccountId: UndepFunds,
-                undepFundsAccountId: UndepFunds,
-                sourceDocumentCode: "R-000177-001",
-                debit: 100m,
-                isInDateRange: true)
-        };
-
-        var codes = JournalEntryRecapLineClassifier.ExtractReachBackInvoiceCodes(lines).ToList();
-
-        Assert.Single(codes);
-        Assert.Equal("R-000177-001", codes[0]);
-    }
-
     private static JournalEntryRecapClassificationLine BuildLine(
         JournalEntryKind kind = JournalEntryKind.Charge,
         int sourceTypeId = (int)SourceType.Invoice,
