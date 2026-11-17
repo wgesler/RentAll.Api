@@ -23,8 +23,11 @@ public partial class JournalEntryRepository : IJournalEntryRepository
     }
 
     private JournalEntry ConvertEntityToModel(JournalEntryEntity e)
+        => ConvertJournalEntryEntityToModel(e, _logger);
+
+    private static JournalEntry ConvertJournalEntryEntityToModel(JournalEntryEntity e, ILogger logger)
     {
-        var lines = ParseJournalEntryLinesJson(e.JournalEntryLines, e.JournalEntryId);
+        var lines = ParseJournalEntryLinesJson(e.JournalEntryLines, e.JournalEntryId, logger);
 
         return new JournalEntry
         {
@@ -57,6 +60,9 @@ public partial class JournalEntryRepository : IJournalEntryRepository
     }
 
     private List<JournalEntryLine> ParseJournalEntryLinesJson(string? json, Guid journalEntryId)
+        => ParseJournalEntryLinesJson(json, journalEntryId, _logger);
+
+    private static List<JournalEntryLine> ParseJournalEntryLinesJson(string? json, Guid journalEntryId, ILogger logger)
     {
         if (string.IsNullOrWhiteSpace(json))
             return new List<JournalEntryLine>();
@@ -68,7 +74,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "Could not deserialize JournalEntryLines JSON for journal entry {JournalEntryId}. First 240 chars: {Preview}",
                 journalEntryId,
                 json.Length <= 240 ? json : json[..240]);
@@ -110,7 +116,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
         throw new JsonException("JournalEntryLines JSON is not an array and no array property was found.");
     }
 
-    private JournalEntryLine ConvertJournalEntryLineEntityToModel(JournalEntryLineEntity e)
+    private static JournalEntryLine ConvertJournalEntryLineEntityToModel(JournalEntryLineEntity e)
     {
         return new JournalEntryLine
         {
@@ -185,6 +191,12 @@ public partial class JournalEntryRepository : IJournalEntryRepository
     private List<JournalEntry> MapJournalEntriesWithLineEntities(
         IEnumerable<JournalEntryEntity>? journalEntryEntities,
         IEnumerable<JournalEntryLineEntity>? lineEntities)
+        => MapJournalEntriesWithLineEntities(journalEntryEntities, lineEntities, _logger);
+
+    internal static List<JournalEntry> MapJournalEntriesWithLineEntities(
+        IEnumerable<JournalEntryEntity>? journalEntryEntities,
+        IEnumerable<JournalEntryLineEntity>? lineEntities,
+        ILogger logger)
     {
         if (journalEntryEntities == null || !journalEntryEntities.Any())
             return new List<JournalEntry>();
@@ -201,7 +213,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
                     .ThenBy(line => line.JournalEntryLineId)
                     .ToList());
 
-        var journalEntries = journalEntryEntities.Select(ConvertEntityToModel).ToList();
+        var journalEntries = journalEntryEntities.Select(entity => ConvertJournalEntryEntityToModel(entity, logger)).ToList();
         foreach (var journalEntry in journalEntries)
         {
             if (linesByJournalEntryId.TryGetValue(journalEntry.JournalEntryId, out var lines) && lines.Count > 0)

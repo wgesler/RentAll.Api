@@ -17,6 +17,10 @@ public interface IAccountingRepository
     Task DeleteInvoiceByIdAsync(Guid invoiceId, Guid organizationId);
     #endregion
 
+    #region Security Deposits
+    Task<SecurityDepositListData> GetUnreturnedSecurityDepositDataAsync(Guid organizationId, string officeAccess, bool includeCompleted = false);
+    #endregion
+
     #region CostCodes
     Task<List<CostCode>> GetCostCodesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<List<CostCode>> GetCostCodesByOfficeIdAsync(Guid organizationId, int officeId);

@@ -25,7 +25,7 @@ namespace RentAll.Test;
 /// <summary>
 /// Runs only when RENTALL_INTEGRATION_TESTS=1; otherwise the test is reported as skipped.
 /// </summary>
-internal sealed class IntegrationFactAttribute : FactAttribute
+internal class IntegrationFactAttribute : FactAttribute
 {
     public IntegrationFactAttribute()
     {

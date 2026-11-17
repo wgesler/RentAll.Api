@@ -243,7 +243,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             };
         }
 
-        private static ReservationDeparture ConvertDepartureEntityToModel(ReservationDepartureEntity e)
+        internal static ReservationDeparture ConvertDepartureEntityToModel(ReservationDepartureEntity e)
         {
             return new ReservationDeparture
             {

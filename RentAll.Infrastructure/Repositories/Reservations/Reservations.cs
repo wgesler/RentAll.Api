@@ -40,22 +40,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertDepartureEntityToModel);
         }
 
-        public async Task<IEnumerable<ReservationDeparture>> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, bool includeCompleted = false)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationDepartureEntity>("Property.Reservation_GetUnreturnedSecurityDeposits", new
-            {
-                OrganizationId = organizationId,
-                Offices = officeAccess,
-                IncludeCompleted = includeCompleted
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<ReservationDeparture>();
-
-            return res.Select(ConvertDepartureEntityToModel);
-        }
-
         public async Task<IEnumerable<ReservationList>> GetReservationListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);

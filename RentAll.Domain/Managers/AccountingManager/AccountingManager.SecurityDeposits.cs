@@ -10,11 +10,12 @@ public partial class AccountingManager
 
     public async Task<UnreturnedSecurityDepositsResult> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, int? officeId = null, bool includeCompleted = false)
     {
-        var rows = (await _reservationRepository.GetUnreturnedSecurityDepositsAsync(organizationId, officeAccess, includeCompleted)).ToList();
+        var data = await _accountingRepository.GetUnreturnedSecurityDepositDataAsync(organizationId, officeAccess, includeCompleted);
+        var rows = data.Rows;
         if (officeId is > 0)
             rows = rows.Where(row => row.OfficeId == officeId.Value).ToList();
 
-        await EnrichSecurityDepositJournalEntryDataAsync(organizationId, rows);
+        await EnrichSecurityDepositJournalEntryDataAsync(organizationId, rows, new SecurityDepositPreload(data));
 
         // Drop reservations marked DepositType=SecurityDeposit that never got a deposit charge/collection.
         rows = rows
@@ -839,7 +840,7 @@ public partial class AccountingManager
             await DeletePaymentAsync(payment.PaymentId, organizationId, currentUser);
     }
 
-    private async Task<List<Payment>> GetSecurityDepositApplicationPaymentsAsync(Guid organizationId, IReadOnlyList<Invoice> invoices, string reservationCode)
+    private async Task<List<Payment>> GetSecurityDepositApplicationPaymentsAsync(Guid organizationId, IReadOnlyList<Invoice> invoices, string reservationCode, SecurityDepositPreload? preload = null)
     {
         var paymentIds = (invoices ?? [])
             .SelectMany(invoice => invoice.LedgerLines ?? [])
@@ -852,7 +853,9 @@ public partial class AccountingManager
         var payments = new List<Payment>();
         foreach (var paymentId in paymentIds)
         {
-            var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            var payment = preload != null
+                ? preload.PaymentsById.GetValueOrDefault(paymentId)
+                : await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
             if (payment == null)
                 continue;
 
@@ -869,7 +872,7 @@ public partial class AccountingManager
 
     #region Report Enrichment
 
-    private async Task EnrichSecurityDepositJournalEntryDataAsync(Guid organizationId, IList<ReservationDeparture> rows)
+    private async Task EnrichSecurityDepositJournalEntryDataAsync(Guid organizationId, IList<ReservationDeparture> rows, SecurityDepositPreload? preload = null)
     {
         if (rows.Count == 0)
             return;
@@ -877,10 +880,11 @@ public partial class AccountingManager
         var reservationIds = rows.Select(row => row.ReservationId).Distinct().ToList();
         var officeIds = rows.Select(row => row.OfficeId).Where(id => id > 0).Distinct().ToList();
 
-        var invoiceEnrichment = await GetReservationInvoiceEnrichmentAsync(organizationId, rows);
-        var returnedByReservation = await GetSecurityDepositReturnPaidAmountsByReservationAsync(organizationId, reservationIds, officeIds);
-        var refundPaidByReservation = await GetSecurityDepositRefundPaidAmountsByReservationAsync(organizationId, rows);
-        var transferredByReservation = await GetSecurityDepositTransferAmountsByReservationAsync(organizationId, reservationIds, officeIds);
+        var invoiceEnrichment = await GetReservationInvoiceEnrichmentAsync(organizationId, rows, preload);
+        var securityDepositEntries = await LoadSecurityDepositJournalEntriesAsync(organizationId, reservationIds, officeIds, preload);
+        var returnedByReservation = await GetSecurityDepositReturnPaidAmountsByReservationAsync(organizationId, securityDepositEntries, officeIds);
+        var refundPaidByReservation = await GetSecurityDepositRefundPaidAmountsByReservationAsync(organizationId, rows, preload);
+        var transferredByReservation = GetSecurityDepositTransferAmountsByReservation(securityDepositEntries);
         var allocationTransferredByReservation = await GetSecurityDepositAllocationTransferredAmountsByReservationAsync(organizationId, rows);
 
         foreach (var row in rows)
@@ -938,7 +942,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<ReservationInvoiceEnrichment> GetReservationInvoiceEnrichmentAsync(Guid organizationId, IList<ReservationDeparture> rows)
+    private async Task<ReservationInvoiceEnrichment> GetReservationInvoiceEnrichmentAsync(Guid organizationId, IList<ReservationDeparture> rows, SecurityDepositPreload? preload)
     {
         var enrichment = new ReservationInvoiceEnrichment
         {
@@ -953,7 +957,7 @@ public partial class AccountingManager
 
         foreach (var row in rows)
         {
-            var (owedAmount, balanceAmount, toBeTransferredAmount, securityDepositInfo) = await LoadSecurityDepositInvoiceAmountsAsync(organizationId, row.ReservationId, row.OfficeId);
+            var (owedAmount, balanceAmount, toBeTransferredAmount, securityDepositInfo) = await LoadSecurityDepositInvoiceAmountsAsync(organizationId, row.ReservationId, row.OfficeId, preload);
             enrichment.OwedByReservation[row.ReservationId] = owedAmount;
             enrichment.BalanceByReservation[row.ReservationId] = balanceAmount;
             enrichment.ToBeTransferredByReservation[row.ReservationId] = toBeTransferredAmount;
@@ -1016,10 +1020,17 @@ public partial class AccountingManager
         return IsPaymentLedgerLine(costCode);
     }
 
-    private async Task<List<Invoice>> GetInvoicesForReservationsAsync(Guid organizationId, int officeId, IReadOnlyCollection<Guid> reservationIds)
+    private async Task<List<Invoice>> GetInvoicesForReservationsAsync(Guid organizationId, int officeId, IReadOnlyCollection<Guid> reservationIds, SecurityDepositPreload? preload = null)
     {
         if (reservationIds.Count == 0)
             return [];
+
+        if (preload != null)
+            return reservationIds.Distinct()
+                .SelectMany(reservationId => preload.InvoicesByReservationId[reservationId])
+                .Where(invoice => invoice.OfficeId == officeId)
+                .DistinctBy(invoice => invoice.InvoiceId)
+                .ToList();
 
         var invoicesById = new Dictionary<Guid, Invoice>();
         foreach (var reservationId in reservationIds.Distinct())
@@ -1169,23 +1180,36 @@ public partial class AccountingManager
 
     #region Return Amounts
 
-    private async Task<Dictionary<Guid, SecurityDepositReturnActivity>> GetSecurityDepositReturnPaidAmountsByReservationAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds)
+    private async Task<List<JournalEntry>> LoadSecurityDepositJournalEntriesAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds, SecurityDepositPreload? preload)
     {
         if (reservationIds.Count == 0 || officeIds.Count == 0)
-            return new Dictionary<Guid, SecurityDepositReturnActivity>();
+            return [];
+
+        var entries = preload != null
+            ? preload.SecurityDepositJournalEntries
+            : await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = string.Join(',', officeIds),
+                SourceTypeId = (int)SourceType.SecurityDeposit,
+                IncludeUnposted = true
+            });
 
         var reservationIdSet = reservationIds.ToHashSet();
-        var accountsReceivableAccountIdByOffice = await LoadAccountsReceivableAccountIdsByOfficeAsync(organizationId, officeIds);
-        var entries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = string.Join(',', officeIds),
-            SourceTypeId = (int)SourceType.SecurityDeposit,
-            IncludeUnposted = true
-        });
-
+        var officeIdSet = officeIds.ToHashSet();
         return (entries ?? [])
             .Where(entry => entry.SourceId.HasValue && reservationIdSet.Contains(entry.SourceId.Value))
+            .Where(entry => officeIdSet.Contains(entry.OfficeId))
+            .ToList();
+    }
+
+    private async Task<Dictionary<Guid, SecurityDepositReturnActivity>> GetSecurityDepositReturnPaidAmountsByReservationAsync(Guid organizationId, IReadOnlyList<JournalEntry> securityDepositEntries, IReadOnlyCollection<int> officeIds)
+    {
+        if (securityDepositEntries.Count == 0)
+            return new Dictionary<Guid, SecurityDepositReturnActivity>();
+
+        var accountsReceivableAccountIdByOffice = await LoadAccountsReceivableAccountIdsByOfficeAsync(organizationId, officeIds);
+        return securityDepositEntries
             .Where(IsTenantSecurityDepositReturnJournalEntry)
             .GroupBy(entry => entry.SourceId!.Value)
             .ToDictionary(
@@ -1238,13 +1262,13 @@ public partial class AccountingManager
             .Sum(line => line.Debit);
     }
 
-    private async Task<Dictionary<Guid, decimal>> GetSecurityDepositRefundPaidAmountsByReservationAsync(Guid organizationId, IList<ReservationDeparture> rows)
+    private async Task<Dictionary<Guid, decimal>> GetSecurityDepositRefundPaidAmountsByReservationAsync(Guid organizationId, IList<ReservationDeparture> rows, SecurityDepositPreload? preload)
     {
         var paidByReservation = new Dictionary<Guid, decimal>();
         foreach (var row in rows)
         {
-            var invoices = await GetInvoicesForReservationsAsync(organizationId, row.OfficeId, [row.ReservationId]);
-            var payments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, row.ReservationCode);
+            var invoices = await GetInvoicesForReservationsAsync(organizationId, row.OfficeId, [row.ReservationId], preload);
+            var payments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, row.ReservationCode, preload);
             var refundPaid = payments
                 .Where(payment => IsSecurityDepositRefundMemo(payment.Description))
                 .Sum(payment => Math.Abs(payment.Amount));
@@ -1295,22 +1319,9 @@ public partial class AccountingManager
         return transferredByReservation;
     }
 
-    private async Task<Dictionary<Guid, decimal>> GetSecurityDepositTransferAmountsByReservationAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds)
+    private static Dictionary<Guid, decimal> GetSecurityDepositTransferAmountsByReservation(IReadOnlyList<JournalEntry> securityDepositEntries)
     {
-        if (reservationIds.Count == 0 || officeIds.Count == 0)
-            return new Dictionary<Guid, decimal>();
-
-        var reservationIdSet = reservationIds.ToHashSet();
-        var entries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = string.Join(',', officeIds),
-            SourceTypeId = (int)SourceType.SecurityDeposit,
-            IncludeUnposted = true
-        });
-
-        return (entries ?? [])
-            .Where(entry => entry.SourceId.HasValue && reservationIdSet.Contains(entry.SourceId.Value))
+        return securityDepositEntries
             .Where(IsSecurityDepositTransferJournalEntry)
             .GroupBy(entry => entry.SourceId!.Value)
             .ToDictionary(
@@ -1364,21 +1375,21 @@ public partial class AccountingManager
         return securityDepositInfo?.CollectedAmount ?? 0m;
     }
 
-    private async Task<(decimal OwedAmount, decimal BalanceAmount, decimal ToBeTransferredAmount, SecurityDepositInvoiceInfo? SecurityDepositInfo)> LoadSecurityDepositInvoiceAmountsAsync(Guid organizationId, Guid reservationId, int officeId)
+    private async Task<(decimal OwedAmount, decimal BalanceAmount, decimal ToBeTransferredAmount, SecurityDepositInvoiceInfo? SecurityDepositInfo)> LoadSecurityDepositInvoiceAmountsAsync(Guid organizationId, Guid reservationId, int officeId, SecurityDepositPreload? preload = null)
     {
         var costCodeById = await LoadCostCodeByOfficeIdAsync(organizationId, officeId);
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice);
-        var invoices = await GetInvoicesForReservationsAsync(organizationId, officeId, [reservationId]);
+        var invoices = await GetInvoicesForReservationsAsync(organizationId, officeId, [reservationId], preload);
         var securityDepositInvoices = FindSecurityDepositInvoicesForReservation(invoices, costCodeById);
         if (securityDepositInvoices.Count == 0)
             return (0m, 0m, 0m, null);
 
         var securityDepositInvoice = securityDepositInvoices[0];
-        var journalEntriesBySourceId = await LoadJournalEntriesForInvoiceAsync(organizationId, officeId, securityDepositInvoice);
+        var journalEntriesBySourceId = await LoadJournalEntriesForInvoiceAsync(organizationId, officeId, securityDepositInvoice, preload);
         var (paidJournalEntryId, paidJournalEntryCode) = ResolvePaymentJournalEntryForDepositInvoice(journalEntriesBySourceId, undepositedFundsAccountId);
         var reservationCode = invoices.Select(invoice => invoice.ReservationCode).FirstOrDefault(code => !string.IsNullOrWhiteSpace(code)) ?? string.Empty;
-        var applicationPayments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservationCode);
+        var applicationPayments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservationCode, preload);
         var ignoredPaymentIds = applicationPayments
             .Where(payment => IsSecurityDepositRefundMemo(payment.Description)
                 || IsSecurityDepositPaymentMemo(payment.Description, reservationCode))
@@ -1694,10 +1705,10 @@ public partial class AccountingManager
         return sourceIds;
     }
 
-    private Task<Dictionary<Guid, List<JournalEntry>>> LoadJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Invoice invoice)
-        => LoadJournalEntriesBySourceIdsAsync(organizationId, officeId, BuildInvoiceJournalEntrySourceIds(invoice));
+    private Task<Dictionary<Guid, List<JournalEntry>>> LoadJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Invoice invoice, SecurityDepositPreload? preload = null)
+        => LoadJournalEntriesBySourceIdsAsync(organizationId, officeId, BuildInvoiceJournalEntrySourceIds(invoice), preload);
 
-    private async Task<Dictionary<Guid, List<JournalEntry>>> LoadJournalEntriesBySourceIdsAsync(Guid organizationId, int officeId, IEnumerable<Guid> sourceIds)
+    private async Task<Dictionary<Guid, List<JournalEntry>>> LoadJournalEntriesBySourceIdsAsync(Guid organizationId, int officeId, IEnumerable<Guid> sourceIds, SecurityDepositPreload? preload = null)
     {
         var journalEntriesBySourceId = new Dictionary<Guid, List<JournalEntry>>();
         foreach (var sourceId in sourceIds.Distinct())
@@ -1705,13 +1716,15 @@ public partial class AccountingManager
             if (sourceId == Guid.Empty)
                 continue;
 
-            var journalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-            {
-                OrganizationId = organizationId,
-                OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
-                SourceId = sourceId,
-                IncludeUnposted = true
-            })).ToList();
+            var journalEntries = preload != null
+                ? preload.JournalEntriesBySourceId[sourceId].Where(entry => entry.OfficeId == officeId).ToList()
+                : (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+                {
+                    OrganizationId = organizationId,
+                    OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
+                    SourceId = sourceId,
+                    IncludeUnposted = true
+                })).ToList();
 
             if (journalEntries.Count > 0)
                 journalEntriesBySourceId[sourceId] = journalEntries;
@@ -1805,6 +1818,31 @@ public partial class AccountingManager
     private class SecurityDepositPaymentAllocation
     {
         public decimal PaidAmount { get; init; }
+    }
+
+    // Report data loaded by Reservation_GetUnreturnedSecurityDeposits in one call; replaces per-reservation repository reads.
+    private class SecurityDepositPreload
+    {
+        public SecurityDepositPreload(SecurityDepositListData data)
+        {
+            InvoicesByReservationId = data.Invoices
+                .Where(invoice => invoice.ReservationId.HasValue)
+                .ToLookup(invoice => invoice.ReservationId!.Value);
+            PaymentsById = data.Payments
+                .GroupBy(payment => payment.PaymentId)
+                .ToDictionary(group => group.Key, group => group.First());
+            JournalEntriesBySourceId = data.JournalEntries
+                .Where(entry => entry.SourceId.HasValue)
+                .ToLookup(entry => entry.SourceId!.Value);
+            SecurityDepositJournalEntries = data.JournalEntries
+                .Where(entry => entry.SourceTypeId == (int)SourceType.SecurityDeposit)
+                .ToList();
+        }
+
+        public ILookup<Guid, Invoice> InvoicesByReservationId { get; }
+        public Dictionary<Guid, Payment> PaymentsById { get; }
+        public ILookup<Guid, JournalEntry> JournalEntriesBySourceId { get; }
+        public List<JournalEntry> SecurityDepositJournalEntries { get; }
     }
 
     private sealed class SecurityDepositReturnActivity
