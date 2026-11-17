@@ -607,6 +607,7 @@ public class CrossPeriodInvoicePaymentTests
             paymentDate: paymentDate,
             description: description);
         scenario.Invoice.LedgerLines.Add(payment);
+        AccountingManagerJournalEntryFeeTestSupport.AttachPaymentDocument(scenario.Context, scenario.Invoice, payment);
 
         await scenario.Context.CreateManager().CreateJournalEntryFromPaymentAsync(
             scenario.Invoice,
@@ -691,8 +692,8 @@ public class CrossPeriodInvoicePaymentTests
     private static List<JournalEntry> GetStandardPaymentEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
         => context.ActiveJournalEntries
             .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Payment
-                && entry.SourceId == invoice.InvoiceId
-                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
+                && entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.PaymentId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId))
             .ToList();
 

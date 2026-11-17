@@ -720,7 +720,7 @@ public partial class AccountingManager
         var tbrAccountId = moveTenantOnTransfer
             ? (escrowDepositAccountId > 0 ? escrowDepositAccountId : escrowSecurityDepositAccountId)
             : context.ChartOfAccountId;
-        if (moveTenantOnTransfer && tbrAmount != 0 && tbrAccountId <= 0)
+        if (tbrAmount != 0 && tbrAccountId <= 0)
             throw new Exception("Select the bank account for this security deposit refund");
 
         if (string.IsNullOrWhiteSpace(invoiceCode))
@@ -730,7 +730,7 @@ public partial class AccountingManager
         var splits = new List<TransferSplit>();
         if (businessAmount != 0)
             splits.Add(BuildSecurityDepositAllocationSplit(context, businessAccountId, businessAmount, description));
-        if (moveTenantOnTransfer && tbrAmount != 0)
+        if (tbrAmount != 0)
             splits.Add(BuildSecurityDepositAllocationSplit(context, tbrAccountId, tbrAmount, $"{invoiceCode.Trim()}: Transfer: Security Deposit Transfer TBR"));
         if (splits.Count == 0)
             throw new Exception("No security deposit amount is available to transfer");
@@ -988,45 +988,11 @@ public partial class AccountingManager
         if (chargeLines.Count == 0 || paymentLines.Count == 0)
             return new SecurityDepositPaymentAllocation();
 
-        var appliedToCharges = chargeLines.Select(_ => 0m).ToArray();
-        var securityDepositPaid = 0m;
-
-        foreach (var payment in paymentLines)
-        {
-            var paymentRemaining = payment.Amount;
-            if (paymentRemaining > 0m)
-            {
-                for (var i = 0; i < chargeLines.Count && paymentRemaining != 0m; i++)
-                {
-                    var chargeRemaining = chargeLines[i].Amount - appliedToCharges[i];
-                    if (chargeRemaining <= 0m)
-                        continue;
-
-                    var apply = Math.Min(paymentRemaining, chargeRemaining);
-                    appliedToCharges[i] += apply;
-                    paymentRemaining -= apply;
-
-                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && apply > 0m)
-                        securityDepositPaid += apply;
-                }
-            }
-            else if (paymentRemaining < 0m)
-            {
-                var toReverse = Math.Abs(paymentRemaining);
-                for (var i = chargeLines.Count - 1; i >= 0 && toReverse != 0m; i--)
-                {
-                    if (appliedToCharges[i] <= 0m)
-                        continue;
-
-                    var reverse = Math.Min(toReverse, appliedToCharges[i]);
-                    appliedToCharges[i] -= reverse;
-                    toReverse -= reverse;
-
-                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && reverse > 0m)
-                        securityDepositPaid -= reverse;
-                }
-            }
-        }
+        var securityDepositPaid = AllocatePaymentsToCharges(
+                chargeLines.Select(line => line.Amount).ToList(),
+                paymentLines.Select(line => line.Amount).ToList())
+            .Where(allocation => IsRefundableSecurityDepositCharge(chargeLines[allocation.ChargeIndex], costCodeById))
+            .Sum(allocation => allocation.Amount);
 
         return new SecurityDepositPaymentAllocation
         {
@@ -1591,39 +1557,78 @@ public partial class AccountingManager
 
     private static void ApplyPaymentsToChargeLineBalances(IReadOnlyList<ReservationChargeLineBalance> chargeEntries, IReadOnlyList<LedgerLine> paymentLines)
     {
-        foreach (var payment in paymentLines)
+        var allocations = AllocatePaymentsToCharges(
+            chargeEntries.Select(entry => entry.Remaining).ToList(),
+            paymentLines.Select(line => line.Amount).ToList());
+
+        foreach (var allocation in allocations)
+            chargeEntries[allocation.ChargeIndex].Remaining -= allocation.Amount;
+    }
+
+    /// <summary>
+    /// Splits invoice payments across charge lines. A payment that exactly equals an unpaid charge pays that charge;
+    /// everything else fills charges top to bottom. Negative payments reverse from the bottom up.
+    /// </summary>
+    private static List<(int PaymentIndex, int ChargeIndex, decimal Amount)> AllocatePaymentsToCharges(IReadOnlyList<decimal> chargeAmounts, IReadOnlyList<decimal> paymentAmounts)
+    {
+        var allocations = new List<(int PaymentIndex, int ChargeIndex, decimal Amount)>();
+        var applied = new decimal[chargeAmounts.Count];
+        var exactMatchedPayments = new HashSet<int>();
+
+        for (var p = 0; p < paymentAmounts.Count; p++)
         {
-            var paymentRemaining = payment.Amount;
+            if (paymentAmounts[p] <= 0m)
+                continue;
+
+            for (var c = 0; c < chargeAmounts.Count; c++)
+            {
+                if (applied[c] != 0m || chargeAmounts[c] != paymentAmounts[p])
+                    continue;
+
+                applied[c] = chargeAmounts[c];
+                exactMatchedPayments.Add(p);
+                allocations.Add((p, c, chargeAmounts[c]));
+                break;
+            }
+        }
+
+        for (var p = 0; p < paymentAmounts.Count; p++)
+        {
+            if (exactMatchedPayments.Contains(p))
+                continue;
+
+            var paymentRemaining = paymentAmounts[p];
             if (paymentRemaining > 0m)
             {
-                for (var i = 0; i < chargeEntries.Count && paymentRemaining != 0m; i++)
+                for (var c = 0; c < chargeAmounts.Count && paymentRemaining != 0m; c++)
                 {
-                    if (chargeEntries[i].Remaining <= 0m)
+                    var chargeRemaining = chargeAmounts[c] - applied[c];
+                    if (chargeRemaining <= 0m)
                         continue;
 
-                    var apply = Math.Min(paymentRemaining, chargeEntries[i].Remaining);
-                    chargeEntries[i].Remaining -= apply;
+                    var apply = Math.Min(paymentRemaining, chargeRemaining);
+                    applied[c] += apply;
                     paymentRemaining -= apply;
+                    allocations.Add((p, c, apply));
                 }
             }
             else if (paymentRemaining < 0m)
             {
                 var toReverse = Math.Abs(paymentRemaining);
-                for (var i = chargeEntries.Count - 1; i >= 0 && toReverse != 0m; i--)
+                for (var c = chargeAmounts.Count - 1; c >= 0 && toReverse != 0m; c--)
                 {
-                    if (chargeEntries[i].Remaining >= chargeEntries[i].Line.Amount)
+                    if (applied[c] <= 0m)
                         continue;
 
-                    var applied = chargeEntries[i].Line.Amount - chargeEntries[i].Remaining;
-                    if (applied <= 0m)
-                        continue;
-
-                    var reverse = Math.Min(toReverse, applied);
-                    chargeEntries[i].Remaining += reverse;
+                    var reverse = Math.Min(toReverse, applied[c]);
+                    applied[c] -= reverse;
                     toReverse -= reverse;
+                    allocations.Add((p, c, -reverse));
                 }
             }
         }
+
+        return allocations;
     }
 
     private static Dictionary<Guid, decimal> CalculateSecurityDepositPaymentAmountsByLedgerLine(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -1642,50 +1647,16 @@ public partial class AccountingManager
             .ThenBy(line => line.LineNumber)
             .ToList();
 
-        var appliedToCharges = chargeLines.Select(_ => 0m).ToArray();
         var paymentAmountsByLedgerLineId = new Dictionary<Guid, decimal>();
+        var allocations = AllocatePaymentsToCharges(
+            chargeLines.Select(line => line.Amount).ToList(),
+            paymentLines.Select(line => line.Amount).ToList());
 
-        foreach (var payment in paymentLines)
+        foreach (var allocation in allocations.Where(allocation => IsRefundableSecurityDepositCharge(chargeLines[allocation.ChargeIndex], costCodeById)))
         {
-            var paymentRemaining = payment.Amount;
-            if (paymentRemaining > 0m)
-            {
-                for (var i = 0; i < chargeLines.Count && paymentRemaining != 0m; i++)
-                {
-                    var chargeRemaining = chargeLines[i].Amount - appliedToCharges[i];
-                    if (chargeRemaining <= 0m)
-                        continue;
-
-                    var apply = Math.Min(paymentRemaining, chargeRemaining);
-                    appliedToCharges[i] += apply;
-                    paymentRemaining -= apply;
-
-                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && apply > 0m)
-                    {
-                        paymentAmountsByLedgerLineId[payment.LedgerLineId] =
-                            RoundSecurityDepositAmount(paymentAmountsByLedgerLineId.GetValueOrDefault(payment.LedgerLineId) + apply);
-                    }
-                }
-            }
-            else if (paymentRemaining < 0m)
-            {
-                var toReverse = Math.Abs(paymentRemaining);
-                for (var i = chargeLines.Count - 1; i >= 0 && toReverse != 0m; i--)
-                {
-                    if (appliedToCharges[i] <= 0m)
-                        continue;
-
-                    var reverse = Math.Min(toReverse, appliedToCharges[i]);
-                    appliedToCharges[i] -= reverse;
-                    toReverse -= reverse;
-
-                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && reverse > 0m)
-                    {
-                        paymentAmountsByLedgerLineId[payment.LedgerLineId] =
-                            RoundSecurityDepositAmount(paymentAmountsByLedgerLineId.GetValueOrDefault(payment.LedgerLineId) - reverse);
-                    }
-                }
-            }
+            var ledgerLineId = paymentLines[allocation.PaymentIndex].LedgerLineId;
+            paymentAmountsByLedgerLineId[ledgerLineId] =
+                RoundSecurityDepositAmount(paymentAmountsByLedgerLineId.GetValueOrDefault(ledgerLineId) + allocation.Amount);
         }
 
         return paymentAmountsByLedgerLineId

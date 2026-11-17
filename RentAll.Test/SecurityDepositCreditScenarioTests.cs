@@ -123,10 +123,14 @@ public class SecurityDepositCreditScenarioTests
         AddLine(invoice, PaymentLine(2000m, Guid.NewGuid(), "ACH - Security Deposit"));
 
         var netDue = (decimal)InvokeStatic("CalculateInvoiceNonSecurityDepositNetDue", invoice, costCodeById, null)!;
-        var outstanding = SumAmounts(InvokeStatic("BuildOutstandingChargeLines", new List<Invoice> { invoice }, costCodeById, null));
+        var outstandingLines = ((IEnumerable)InvokeStatic("BuildOutstandingChargeLines", new List<Invoice> { invoice }, costCodeById, null)!).Cast<object>().ToList();
+        var allocation = InvokeStatic("CalculateSecurityDepositPaymentAllocation", invoice, costCodeById, null)!;
 
         Assert.Equal(82.58m, netDue);
-        Assert.Equal(82.58m, outstanding);
+        var outstandingLine = Assert.Single(outstandingLines);
+        Assert.Equal("Sewer", outstandingLine.GetType().GetProperty("Description")!.GetValue(outstandingLine));
+        Assert.Equal(82.58m, outstandingLine.GetType().GetProperty("Amount")!.GetValue(outstandingLine));
+        Assert.Equal(2000m, allocation.GetType().GetProperty("PaidAmount")!.GetValue(allocation));
     }
 
     private sealed record Figures(

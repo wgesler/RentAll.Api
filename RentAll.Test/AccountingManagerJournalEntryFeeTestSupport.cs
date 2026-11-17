@@ -93,6 +93,47 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         };
     }
 
+    /// <summary>
+    /// Invoice payment lines are always backed by a Payment document; the cash JE is sourced by that payment.
+    /// </summary>
+    internal static void AttachPaymentDocument(FeeJournalEntryTestContext context, Invoice invoice, LedgerLine paymentLine)
+    {
+        var paymentId = Guid.NewGuid();
+        paymentLine.PaymentId = paymentId;
+        context.TrackPayment(new Payment
+        {
+            PaymentId = paymentId,
+            OrganizationId = invoice.OrganizationId,
+            OfficeId = invoice.OfficeId,
+            PaymentCode = $"PMT-{paymentId.ToString()[..8]}",
+            PaymentDate = paymentLine.LedgerLineDate,
+            Amount = paymentLine.Amount,
+            CostCodeId = paymentLine.CostCodeId,
+            Description = paymentLine.Description,
+            PaymentKindId = (int)PaymentKind.Invoice,
+            IsActive = true,
+            CreatedBy = AccountingManagerJournalEntryTestSupport.CurrentUser,
+            LedgerLines =
+            [
+                new PaymentLedgerLine
+                {
+                    LedgerLineId = paymentLine.LedgerLineId,
+                    InvoiceId = invoice.InvoiceId,
+                    InvoiceCode = invoice.InvoiceCode,
+                    LineNumber = paymentLine.LineNumber,
+                    ReservationId = paymentLine.ReservationId,
+                    CostCodeId = paymentLine.CostCodeId,
+                    TransactionType = paymentLine.TransactionType,
+                    Amount = paymentLine.Amount,
+                    Description = paymentLine.Description,
+                    LedgerLineDate = paymentLine.LedgerLineDate,
+                    PaymentId = paymentId
+                }
+            ]
+        });
+        context.TrackInvoice(invoice);
+    }
+
     internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(
         Reservation reservation,
         string petFeeAccountCode = "2080",
@@ -356,7 +397,35 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             accountingRepository
                 .Setup(r => r.GetPaymentByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
                 .ReturnsAsync((Guid paymentId, Guid _) =>
-                    _payments.TryGetValue(paymentId, out var payment) ? ClonePayment(payment) : null);
+                {
+                    if (!_payments.TryGetValue(paymentId, out var stored))
+                        return null;
+
+                    // Like the database, a payment's lines are the invoice ledger lines that still point at it.
+                    var payment = ClonePayment(stored);
+                    var invoiceLines = _invoices.Values
+                        .SelectMany(invoice => invoice.LedgerLines.Select(line => (Invoice: invoice, Line: line)))
+                        .Where(item => item.Line.PaymentId == paymentId)
+                        .ToList();
+                    if (invoiceLines.Count > 0 || stored.LedgerLines.Any(line => _invoices.ContainsKey(line.InvoiceId)))
+                    {
+                        payment.LedgerLines = invoiceLines.Select(item => new PaymentLedgerLine
+                        {
+                            LedgerLineId = item.Line.LedgerLineId,
+                            InvoiceId = item.Invoice.InvoiceId,
+                            InvoiceCode = item.Invoice.InvoiceCode,
+                            LineNumber = item.Line.LineNumber,
+                            ReservationId = item.Line.ReservationId,
+                            CostCodeId = item.Line.CostCodeId,
+                            TransactionType = item.Line.TransactionType,
+                            Amount = item.Line.Amount,
+                            Description = item.Line.Description,
+                            LedgerLineDate = item.Line.LedgerLineDate,
+                            PaymentId = paymentId
+                        }).ToList();
+                    }
+                    return payment;
+                });
             accountingRepository
                 .Setup(r => r.GetDepositByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
                 .ReturnsAsync((Guid depositId, Guid _) =>

@@ -132,13 +132,14 @@ public class InvoiceJournalEntryGapCoverageTests
             amount: 1500m,
             paymentDate: new DateOnly(2026, 4, 15));
         invoice.LedgerLines.Add(payment);
+        AccountingManagerJournalEntryFeeTestSupport.AttachPaymentDocument(context, invoice, payment);
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         var paymentEntry = Assert.Single(context.ActiveJournalEntries, entry =>
-            entry.SourceTypeId == (int)SourceType.Invoice
+            entry.SourceTypeId == (int)SourceType.InvoicePayment
             && entry.JournalEntryKindId == JournalEntryKind.Payment);
-        Assert.Equal(invoice.InvoiceId, paymentEntry.SourceId);
+        Assert.Equal(payment.PaymentId, paymentEntry.SourceId);
         AssertBalancedJournalEntry(paymentEntry);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Credit);
@@ -168,7 +169,7 @@ public class InvoiceJournalEntryGapCoverageTests
             description: "Check 8979");
         invoice.LedgerLines.Add(payment);
         invoice.PaidAmount += payment.Amount;
-        context.TrackInvoice(invoice);
+        AccountingManagerJournalEntryFeeTestSupport.AttachPaymentDocument(context, invoice, payment);
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
         Assert.Contains(context.ActiveJournalEntries, entry => entry.JournalEntryKindId == JournalEntryKind.Payment);
@@ -176,12 +177,11 @@ public class InvoiceJournalEntryGapCoverageTests
         invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == payment.LedgerLineId);
         invoice.PaidAmount -= payment.Amount;
         invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
-        context.TrackInvoice(invoice);
 
         await manager.UpdateInvoiceAsync(invoice);
 
         Assert.DoesNotContain(context.ActiveJournalEntries, entry =>
-            entry.SourceTypeId == (int)SourceType.Invoice
+            entry.SourceId == payment.PaymentId
             && entry.JournalEntryKindId == JournalEntryKind.Payment);
     }
 
@@ -257,14 +257,15 @@ public class InvoiceJournalEntryGapCoverageTests
             amount: 800m,
             paymentDate: new DateOnly(2026, 1, 25));
         invoice.LedgerLines.Add(payment);
+        AccountingManagerJournalEntryFeeTestSupport.AttachPaymentDocument(context, invoice, payment);
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        // Pre-payments produce three journal entries: payment, received, and apply. All share InvoiceId
-        // as SourceId and are distinguished by JournalEntryKindId.
+        // Pre-payments produce three journal entries: payment (sourced by the Payment document), received, and apply
+        // (both sourced by the invoice).
         var standardPaymentEntry = Assert.Single(context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.Payment
-                && entry.SourceId == invoice.InvoiceId
+                && entry.SourceId == payment.PaymentId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId));
         var receivedEntry = Assert.Single(context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
@@ -1029,6 +1030,7 @@ public class InvoiceJournalEntryGapCoverageTests
             paymentDate: paymentDate,
             description: "ACH - 06/21-07/20, Dept");
         invoice.LedgerLines.Add(payment);
+        AccountingManagerJournalEntryFeeTestSupport.AttachPaymentDocument(context, invoice, payment);
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
@@ -1048,7 +1050,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var paymentEntry = Assert.Single(context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.Payment
-                && entry.SourceId == invoice.InvoiceId
+                && entry.SourceId == payment.PaymentId
                 && entry.TransactionDate == paymentDate
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId
                     && line.Debit == paymentAmount));

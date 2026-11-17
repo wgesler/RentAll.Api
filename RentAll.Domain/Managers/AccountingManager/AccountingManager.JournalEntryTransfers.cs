@@ -298,9 +298,18 @@ public partial class AccountingManager
             ? transfer.BankAccountId.Value
             : accounts.EscrowDepositAccountId;
         var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
-        var isSecurityDepositTransfer = IsSecurityDepositAllocationMemo(transfer.Description);
+        // Card-refund transfers built from the General Ledger keep a generic header; every split still carries the security deposit memo.
+        var memoSplits = (transfer.Splits ?? [])
+            .Where(split => split.ChartOfAccountId is > 0 && split.Amount != 0)
+            .ToList();
+        var securityDepositMemoSource = IsSecurityDepositAllocationMemo(transfer.Description)
+            ? transfer.Description
+            : memoSplits.Count > 0 && memoSplits.All(split => IsSecurityDepositAllocationMemo(split.Description))
+                ? memoSplits.Select(split => split.Description).FirstOrDefault(description => !IsSecurityDepositAllocationTbrMemo(description)) ?? memoSplits[0].Description
+                : null;
+        var isSecurityDepositTransfer = securityDepositMemoSource != null;
         if (isSecurityDepositTransfer)
-            memo = BuildSecurityDepositTransferCreditMemo(SecurityDepositTransferInvoicePrefix(transfer.Description));
+            memo = BuildSecurityDepositTransferCreditMemo(SecurityDepositTransferInvoicePrefix(securityDepositMemoSource));
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
             PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
@@ -331,7 +340,7 @@ public partial class AccountingManager
 
         if (isSecurityDepositTransfer)
         {
-            var invoiceCode = SecurityDepositTransferInvoicePrefix(transfer.Description);
+            var invoiceCode = SecurityDepositTransferInvoicePrefix(securityDepositMemoSource);
             var creditMemo = TruncateJournalEntryLineMemo(BuildSecurityDepositTransferCreditMemo(invoiceCode));
             var netAmount = 0m;
             foreach (var accountTotal in destinationAccountTotals)
@@ -364,12 +373,19 @@ public partial class AccountingManager
                     ChartOfAccountId = bankAccountId,
                     Debit = bankIsCredit ? 0 : bankAmount,
                     Credit = bankIsCredit ? bankAmount : 0,
-                    Memo = bankIsCredit ? creditMemo : TruncateJournalEntryLineMemo(BuildSecurityDepositTransferDebitMemo(invoiceCode)),
+                    Memo = bankIsCredit ? creditMemo : TruncateJournalEntryLineMemo(BuildSecurityDepositTransferTbrMemo(invoiceCode)),
                     CreatedBy = currentUser
                 };
                 ApplyJournalEntryLineContext(bankLine, headerLineContext);
-                journalEntryLines.Insert(0, bankLine);
+                journalEntryLines.Add(bankLine);
             }
+
+            // Display order: credits first, then the To Be Returned debit, then the outstanding charges debit.
+            var tbrMemo = TruncateJournalEntryLineMemo(BuildSecurityDepositTransferTbrMemo(invoiceCode));
+            journalEntryLines = journalEntryLines
+                .OrderBy(line => line.Credit > 0 ? 0 : 1)
+                .ThenBy(line => line.Memo == tbrMemo ? 0 : 1)
+                .ToList();
         }
         else
         {

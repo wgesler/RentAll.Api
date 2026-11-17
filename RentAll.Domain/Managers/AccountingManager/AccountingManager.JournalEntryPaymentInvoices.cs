@@ -60,6 +60,8 @@ public partial class AccountingManager
 
         if (payment.LedgerLines.Count == 0)
         {
+            // No applications left means no cash JE; remove the stale open entries rather than leave A/R and Undeposited Funds overstated.
+            await DeleteJournalEntriesForPaymentAsync(payment);
             result.Bail("Exit: payment has no linked invoice ledger lines.");
             return result;
         }
