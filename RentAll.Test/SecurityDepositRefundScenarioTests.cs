@@ -1,7 +1,7 @@
-using System.Reflection;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
+using System.Reflection;
 
 namespace RentAll.Test;
 

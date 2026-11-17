@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
@@ -8,6 +7,7 @@ using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using System.Text.RegularExpressions;
 using SendGridEmailAddress = SendGrid.Helpers.Mail.EmailAddress;
 
 namespace RentAll.Infrastructure.Services;

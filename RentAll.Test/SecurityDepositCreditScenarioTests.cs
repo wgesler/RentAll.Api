@@ -1,8 +1,8 @@
-using System.Collections;
-using System.Reflection;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
+using System.Collections;
+using System.Reflection;
 using Xunit.Abstractions;
 
 namespace RentAll.Test;

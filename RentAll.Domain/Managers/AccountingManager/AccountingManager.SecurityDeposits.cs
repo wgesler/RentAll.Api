@@ -1075,7 +1075,7 @@ public partial class AccountingManager
         return RoundSecurityDepositAmount(Math.Min(invoiceBalance, nonSecurityDepositRemaining));
     }
 
-   private static List<Invoice> FindSecurityDepositInvoicesForReservation(IReadOnlyList<Invoice> reservationInvoices, IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static List<Invoice> FindSecurityDepositInvoicesForReservation(IReadOnlyList<Invoice> reservationInvoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         // Normal operation expects exactly one security-deposit invoice per reservation.
         // When more than one exists, callers sum deposit/paid/owed and keep the first invoice for JE display links.

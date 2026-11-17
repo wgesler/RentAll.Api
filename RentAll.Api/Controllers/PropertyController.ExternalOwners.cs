@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Services;
-using RentAll.Domain.Enums;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
