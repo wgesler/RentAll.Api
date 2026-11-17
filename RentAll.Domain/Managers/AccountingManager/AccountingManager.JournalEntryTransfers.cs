@@ -310,9 +310,9 @@ public partial class AccountingManager
         var isSecurityDepositTransfer = securityDepositMemoSource != null;
         if (isSecurityDepositTransfer)
             memo = BuildSecurityDepositTransferCreditMemo(SecurityDepositTransferInvoicePrefix(securityDepositMemoSource));
-        var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
+        var headerLineContext = FirstTransferSplitContext(transfer.Splits ?? []) with
         {
-            PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
+            PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits ?? [], split => split.PropertyId)
         };
         var journalEntryLines = new List<JournalEntryLine>();
 

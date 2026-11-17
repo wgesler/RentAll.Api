@@ -42,7 +42,4 @@ public partial class AccountingManager
 
         return total;
     }
-
-    private int ResolveRentalCostCodeIdForMatchup(Reservation reservation)
-        => FURNISHED_EXPENSE_COST_CODE > 0 ? FURNISHED_EXPENSE_COST_CODE : 77;
 }

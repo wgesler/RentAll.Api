@@ -655,63 +655,6 @@ public partial class AccountingManager
         return incrementalOwnerActual > 0 ? incrementalOwnerActual : null;
     }
 
-    private async Task<(decimal FullRent, decimal OwnerShare)?> CalculateOwnerActualAmountForInvoicePaymentGrossAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine paymentLedgerLine, decimal paymentAmount, IReadOnlyList<JournalEntry>? workingEntries = null)
-    {
-        if (paymentAmount == 0 || paymentLedgerLine.LedgerLineId == Guid.Empty)
-            return null;
-
-        if (IsTenantHeldSecurityDepositPayment(paymentLedgerLine))
-            return null;
-
-        if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out _))
-            return null;
-
-        var securityDepositDue = await GetInvoiceSecurityDepositBaseAsync(ownerShareInvoice);
-        var sdwDue = await GetInvoiceSecurityDepositWaiverBaseAsync(ownerShareInvoice);
-        var rentDue = await GetInvoiceRentPlus4000BaseAsync(ownerShareInvoice);
-        var feesDue = await GetInvoiceFeesBaseAsync(ownerShareInvoice);
-        if (rentDue == 0)
-            return null;
-
-        var costCodeById = await LoadCostCodeByOfficeIdAsync(paymentSourceInvoice.OrganizationId, paymentSourceInvoice.OfficeId);
-        var orderedPayments = await ResolveOrderedPaymentsForOwnerActualAsync(
-            ownerShareInvoice,
-            paymentSourceInvoice,
-            paymentLedgerLine,
-            paymentAmount,
-            costCodeById);
-        if (orderedPayments.Count == 0)
-            return null;
-
-        var cumulativeRentPaid = CalculateCumulativeRentPaidThroughWaterfall(
-            securityDepositDue,
-            rentDue,
-            feesDue + sdwDue,
-            orderedPayments,
-            paymentLedgerLine.LedgerLineId);
-        var priorGrossRent = await SumPriorOwnerActualGrossRentAsync(
-            ownerShareInvoice,
-            paymentSourceInvoice,
-            paymentLedgerLine,
-            workingEntries);
-        var incrementalGrossRent = Math.Round(cumulativeRentPaid - priorGrossRent, 2, MidpointRounding.AwayFromZero);
-        var targetOwnerShare = await CalculateTargetOwnerShareForCumulativeRentPaidAsync(
-            ownerShareInvoice,
-            cumulativeRentPaid,
-            rentDue,
-            workingEntries);
-        var priorOwnerShare = await SumPriorOwnerActualAmountAsync(
-            ownerShareInvoice,
-            paymentSourceInvoice,
-            paymentLedgerLine,
-            workingEntries);
-        var incrementalOwnerShare = Math.Round((targetOwnerShare ?? 0m) - priorOwnerShare, 2, MidpointRounding.AwayFromZero);
-        if (incrementalGrossRent == 0 && incrementalOwnerShare == 0)
-            return null;
-
-        return (incrementalGrossRent, incrementalOwnerShare);
-    }
-
     private static decimal CalculateCumulativeRentPaidThroughWaterfall(decimal securityDepositDue, decimal rentDue, decimal feesDue, IReadOnlyList<LedgerLine> orderedPayments, Guid throughPaymentLedgerLineId)
     {
         var securityDepositRemaining = securityDepositDue;
@@ -820,40 +763,6 @@ public partial class AccountingManager
         return entries.Sum(entry => entry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
             .Sum(line => line.Credit - line.Debit));
-    }
-
-    private async Task<decimal> SumPriorOwnerActualGrossRentAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine currentPaymentLedgerLine, IReadOnlyList<JournalEntry>? workingEntries)
-    {
-        if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out var rentalLine))
-            return 0m;
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(ownerShareInvoice.OrganizationId, ownerShareInvoice.OfficeId);
-        var costCodeById = await LoadCostCodeByOfficeIdAsync(paymentSourceInvoice.OrganizationId, paymentSourceInvoice.OfficeId);
-        costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
-        var tenantIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, ownerShareInvoice.OfficeId, accountingOffice, rentalCostCode);
-
-        var dbEntries = await GetOwnerActualJournalEntriesForInvoiceAsync(
-            ownerShareInvoice.OrganizationId,
-            ownerShareInvoice.OfficeId,
-            ownerShareInvoice.InvoiceId);
-        var orderedPayments = GetOrderedInvoicePaymentLines(paymentSourceInvoice, costCodeById);
-        if (orderedPayments.Count == 0)
-            orderedPayments = [currentPaymentLedgerLine];
-
-        var earlierPayments = orderedPayments
-            .TakeWhile(line => line.LedgerLineId != currentPaymentLedgerLine.LedgerLineId)
-            .ToList();
-        var entries = (workingEntries ?? [])
-            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, ownerShareInvoice))
-            .Concat(dbEntries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, ownerShareInvoice.AccountingPeriod)))
-            .GroupBy(entry => entry.JournalEntryId)
-            .Select(group => group.First())
-            .Where(entry => IsOwnerActualJournalEntryForEarlierPayment(entry, ownerShareInvoice, earlierPayments))
-            .ToList();
-
-        return entries.Sum(entry => entry.JournalEntryLines
-            .Where(line => line.ChartOfAccountId == tenantIncomeAccountId)
-            .Sum(line => line.Debit - line.Credit));
     }
 
     private static bool IsOwnerActualJournalEntryForEarlierPayment(JournalEntry entry, Invoice invoice, IReadOnlyList<LedgerLine> earlierPayments)

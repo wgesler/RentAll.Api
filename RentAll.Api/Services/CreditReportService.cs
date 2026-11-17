@@ -644,14 +644,6 @@ public class CreditReportService
         return bankCards.FirstOrDefault(card => card.BankCardId == bankCardId.Value);
     }
 
-    private static string? LookupLastFour(int? bankCardId, IReadOnlyList<BankCard> bankCards)
-    {
-        if (bankCardId is not > 0)
-            return null;
-
-        return bankCards.FirstOrDefault(card => card.BankCardId == bankCardId.Value)?.LastFour;
-    }
-
     private static (DateOnly? StartDate, DateOnly? EndDate) ResolveDateRange(IReadOnlyList<CreditCardStatementLine> lines)
     {
         var dates = lines.Select(line => line.ChargeDate).Where(date => date.HasValue).Select(date => date!.Value).ToList();

@@ -691,17 +691,6 @@ public partial class AccountingManager
     private static bool IsSecurityDepositCardRefund(PaymentType paymentType)
         => paymentType is PaymentType.CreditCard or PaymentType.CreditCardRefund;
 
-    private static bool ShouldCreateSecurityDepositTransfer(PaymentType paymentType, decimal collectedAmount, decimal refundAmount)
-    {
-        var collected = RoundSecurityDepositAmount(collectedAmount);
-        var tenantAmount = RoundSecurityDepositAmount(Math.Min(Math.Abs(refundAmount), collected));
-        var businessAmount = RoundSecurityDepositAmount(collected - tenantAmount);
-        if (paymentType == PaymentType.CreditCardRefund)
-            return collected != 0m;
-
-        return (paymentType == PaymentType.Check || paymentType == PaymentType.Ach) && businessAmount != 0m;
-    }
-
     private async Task<Transfer> CreateSecurityDepositAllocationTransferAsync(SecurityDepositContext context, string invoiceCode, decimal refundAmount)
     {
         var collectedAmount = RoundSecurityDepositAmount(context.CollectedAmount);
@@ -1875,9 +1864,6 @@ public partial class AccountingManager
     private static bool IsSecurityDepositCreditMemo(string? description)
         => (description ?? string.Empty).Contains(": Security Deposit Credit", StringComparison.OrdinalIgnoreCase);
 
-    private static string BuildSecurityDepositAllocationMemo(string reservationCode)
-        => $"{reservationCode.Trim()}: Security Deposit Transfer";
-
     private static string BuildSecurityDepositTransferCreditMemo(string invoiceCode)
         => $"{invoiceCode.Trim()}: Transfer: Security Deposit Transfer";
 
@@ -1898,9 +1884,6 @@ public partial class AccountingManager
         var colon = value.IndexOf(':');
         return colon > 0 ? value[..colon].Trim() : value;
     }
-
-    private static string BuildSecurityDepositAllocationTbrMemo(string reservationCode)
-        => $"{reservationCode.Trim()}: Security Deposit Transfer TBR";
 
     private static bool IsSecurityDepositPaymentMemo(string? description, string reservationCode)
     {

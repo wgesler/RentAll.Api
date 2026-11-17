@@ -618,29 +618,6 @@ public partial class AccountingManager
         return eligiblePaymentIds;
     }
 
-    private async Task TryStampBatchPaymentForDepositHealthFixAsync(Deposit deposit, Guid organizationId, Guid currentUser)
-    {
-        var paymentIds = await CollectPaymentIdsToStampForDepositHealthFixAsync(deposit, organizationId);
-        if (paymentIds.Count == 0)
-            return;
-
-        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser, unstampMissing: false);
-
-        if (_officeSyncCache == null)
-            return;
-
-        foreach (var paymentId in paymentIds)
-        {
-            if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
-            {
-                cachedPayment.DepositId = deposit.DepositId;
-                cachedPayment.DepositCode = deposit.DepositCode;
-            }
-        }
-
-        _officeSyncCache.InvalidateRematchIndexes();
-    }
-
     private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(Guid organizationId, int officeId, string invoiceSourceCode)
     {
         var normalizedSourceCode = invoiceSourceCode.Trim();
@@ -715,62 +692,6 @@ public partial class AccountingManager
                     paymentIds.Add(payment.PaymentId);
                     break;
                 }
-            }
-        }
-
-        return paymentIds.ToList();
-    }
-
-    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsByReservationIdAsync(Guid organizationId, int officeId, Guid reservationId)
-    {
-        if (reservationId == Guid.Empty)
-            return [];
-
-        var paymentIds = new HashSet<Guid>();
-
-        if (_officeSyncCache != null)
-        {
-            var cachedReservationInvoiceIds = _officeSyncCache.InvoicesById.Values
-                .Where(invoice => invoice.ReservationId == reservationId)
-                .Select(invoice => invoice.InvoiceId)
-                .ToHashSet();
-
-            foreach (var payment in _officeSyncCache.Payments)
-            {
-                if (!payment.IsActive || !IsUndepositedPaymentKind(payment.PaymentKindId))
-                    continue;
-
-                if ((payment.LedgerLines ?? []).Any(line =>
-                        line.InvoiceId != Guid.Empty && cachedReservationInvoiceIds.Contains(line.InvoiceId)))
-                {
-                    paymentIds.Add(payment.PaymentId);
-                }
-            }
-
-            return paymentIds.ToList();
-        }
-
-        var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            IncludeInactive = true,
-            IncludePaid = true
-        })).Where(invoice => invoice.ReservationId == reservationId).ToList();
-
-        var reservationInvoiceIds = invoices.Select(invoice => invoice.InvoiceId).ToHashSet();
-        if (reservationInvoiceIds.Count == 0)
-            return [];
-
-        foreach (var payment in await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, officeId.ToString()))
-        {
-            if (!payment.IsActive)
-                continue;
-
-            if ((payment.LedgerLines ?? []).Any(line =>
-                    line.InvoiceId != Guid.Empty && reservationInvoiceIds.Contains(line.InvoiceId)))
-            {
-                paymentIds.Add(payment.PaymentId);
             }
         }
 
@@ -891,7 +812,7 @@ public partial class AccountingManager
         if (journalEntry?.DepositId != deposit.DepositId)
             return false;
 
-        var description = split.Description.Trim();
+        var description = (split.Description ?? string.Empty).Trim();
         return (journalEntry.JournalEntryLines ?? []).Any(line =>
             line.ChartOfAccountId == undepositedFundsAccountId
             && Math.Abs(RoundCurrency((line.Debit - line.Credit) - split.Amount)) <= 0.005m
@@ -934,7 +855,7 @@ public partial class AccountingManager
         var processedJournalEntryIds = new HashSet<Guid>();
         foreach (var split in splits)
         {
-            var description = split.Description.Trim();
+            var description = (split.Description ?? string.Empty).Trim();
             var reservationId = NormalizeOptionalGuid(split.ReservationId);
             foreach (var line in lines)
             {

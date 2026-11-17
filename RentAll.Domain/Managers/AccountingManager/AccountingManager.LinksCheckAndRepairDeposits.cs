@@ -1536,55 +1536,6 @@ public partial class AccountingManager
         return payment?.PaymentDate ?? default;
     }
 
-    private async Task<bool> PaymentDepositStampConflictsWithDepositAsync(Deposit deposit, Guid paymentId)
-    {
-        if (paymentId == Guid.Empty)
-            return false;
-
-        Payment? payment = null;
-        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
-            payment = cachedPayment;
-        else
-            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
-
-        if (payment?.DepositId is not { } paymentDepositId || paymentDepositId == Guid.Empty)
-            return false;
-
-        return paymentDepositId != deposit.DepositId;
-    }
-
-    private async Task<HashSet<Guid>> FilterPaymentIdsAvailableForDepositRematchAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds)
-    {
-        var eligible = new HashSet<Guid>();
-        foreach (var paymentId in paymentIds)
-        {
-            if (paymentId == Guid.Empty)
-                continue;
-
-            if (!await PaymentDepositStampConflictsWithDepositAsync(deposit, paymentId))
-                eligible.Add(paymentId);
-        }
-
-        return eligible;
-    }
-
-    private async Task<List<Payment>> GetInvoicePaymentsStampedToDepositAsync(Deposit deposit)
-    {
-        if (_officeSyncCache != null)
-        {
-            return _officeSyncCache.Payments
-                .Where(payment =>
-                    payment.IsActive
-                    && IsUndepositedPaymentKind(payment.PaymentKindId)
-                    && payment.DepositId == deposit.DepositId)
-                .ToList();
-        }
-
-        return (await GetUndepositedPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString()))
-            .Where(payment => payment.IsActive && payment.DepositId == deposit.DepositId)
-            .ToList();
-    }
-
     // One payment applied to two or more invoices: the UF split is the payment total, and the link is the first invoice's AR line.
     private async Task<Guid?> TryResolveConsolidatedMultiInvoiceDepositSplitLineAsync(Deposit deposit, DepositSplit split, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds, Payment? knownPayment = null)
     {
@@ -1968,13 +1919,6 @@ public partial class AccountingManager
 
         return string.Empty;
     }
-
-    private static bool GuidEquals(Guid? left, Guid? right)
-    {
-        var normalizedLeft = NormalizeOptionalGuid(left);
-        var normalizedRight = NormalizeOptionalGuid(right);
-        return normalizedLeft != null && normalizedRight != null && normalizedLeft == normalizedRight;
-    }
     #endregion
 
     #region Fill A Missing Reservation Or Property On A Deposit Split
@@ -2021,15 +1965,6 @@ public partial class AccountingManager
             trail?.Note(
                 $"Set reservation/property on split {split.DepositSplitId} from {ResolveDepositSplitReservationSourceCode(split) ?? "description"}.");
         }
-    }
-
-    private async Task<Guid?> ResolveReservationIdForDepositSplitAsync(Deposit deposit, DepositSplit split)
-    {
-        var reservationId = NormalizeOptionalGuid(split.ReservationId);
-        if (reservationId != null)
-            return reservationId;
-
-        return (await ResolveDepositSplitReservationContextAsync(deposit, split))?.ReservationId;
     }
 
     private async Task<DepositSplitReservationContext?> ResolveDepositSplitReservationContextAsync(Deposit deposit, DepositSplit split)
@@ -2304,30 +2239,6 @@ public partial class AccountingManager
         }
 
         await ClearInvoicePaymentDepositStampAsync(payment, organizationId, currentUser);
-    }
-
-    private static HashSet<Guid> CollectPaymentUndepositedFundsLineIds(
-        IReadOnlyList<JournalEntry> paymentJournalEntries,
-        int undepositedFundsAccountId)
-    {
-        var lineIds = new HashSet<Guid>();
-        if (undepositedFundsAccountId <= 0)
-            return lineIds;
-
-        foreach (var journalEntry in paymentJournalEntries)
-        {
-            foreach (var line in journalEntry.JournalEntryLines ?? [])
-            {
-                if (line.JournalEntryLineId != Guid.Empty
-                    && line.ChartOfAccountId == undepositedFundsAccountId
-                    && Math.Abs(line.Debit - line.Credit) > 0.005m)
-                {
-                    lineIds.Add(line.JournalEntryLineId);
-                }
-            }
-        }
-
-        return lineIds;
     }
 
     private static HashSet<Guid> CollectPaymentAccountsReceivableLineIds(

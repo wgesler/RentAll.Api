@@ -1381,33 +1381,6 @@ public partial class AccountingManager
         return true;
     }
 
-    private static IEnumerable<DateOnly> EnumerateBillableMonths(Reservation reservation, DateOnly throughMonth, DateOnly accountingStartMonth)
-    {
-        var arrivalDate = ResolveBillingArrivalDate(reservation);
-        var departureDate = ResolveBillingDepartureDate(reservation);
-        var startMonth = FirstDayOfMonth(arrivalDate);
-        if (startMonth < accountingStartMonth)
-            startMonth = accountingStartMonth;
-
-        var departureMonth = FirstDayOfMonth(departureDate);
-        var scanThrough = throughMonth <= departureMonth ? throughMonth : departureMonth;
-
-        if (startMonth > scanThrough)
-            yield break;
-
-        for (var month = startMonth; month <= scanThrough; month = month.AddMonths(1))
-        {
-            if (!ReservationOverlapsBillingMonth(arrivalDate, departureDate, month, LastDayOfMonth(month)))
-                continue;
-
-            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, month);
-            if (!HasBillablePreviewPeriod(reservation, periodStart, periodEnd))
-                continue;
-
-            yield return month;
-        }
-    }
-
     private async Task<DateOnly?> TryGetAccountingStartDateAsync(Guid organizationId, int officeId)
     {
         var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
@@ -2507,11 +2480,6 @@ public partial class AccountingManager
 
     private static bool IsCompanyReferralLedgerLine(LedgerLine line)
         => line.Description.StartsWith("Referral Fee", StringComparison.Ordinal);
-
-    private static void UpsertCompanyReferralLedgerLine(List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, LedgerLine templateLine)
-    {
-        UpsertCompanyLedgerLine(ledgerLines, rentLines, templateLine, IsCompanyReferralLedgerLine);
-    }
 
     private static void RemoveCompanyReferralLedgerLines(List<LedgerLine> ledgerLines)
     {

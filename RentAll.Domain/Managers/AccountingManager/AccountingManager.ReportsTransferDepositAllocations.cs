@@ -356,41 +356,6 @@ public partial class AccountingManager
         return results;
     }
 
-    private static IEnumerable<List<TransferSplit>> GroupUnlinkedTransferSplitsForReport(IReadOnlyList<TransferSplit>? splits)
-    {
-        if (splits == null || splits.Count == 0)
-            return [];
-
-        return splits
-            .Select((split, index) => (split, index))
-            .Where(item => Math.Abs(item.split.Amount) > 0.005m
-                && (item.split.JournalEntryLineId is null || item.split.JournalEntryLineId == Guid.Empty))
-            .GroupBy(item => BuildTransferReportSplitGroupKey(item.split), StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Select(item => item.split).ToList());
-    }
-
-    private static string BuildSecurityDepositTransferReportGroupKey(TransferSplit split)
-    {
-        var propertyId = split.PropertyId is { } property && property != Guid.Empty ? property : Guid.Empty;
-        var reservationId = split.ReservationId is { } reservation && reservation != Guid.Empty ? reservation : Guid.Empty;
-        var lineId = split.JournalEntryLineId ?? Guid.Empty;
-        var description = NormalizeSecurityDepositReportDescription(split.Description);
-        if (propertyId != Guid.Empty || reservationId != Guid.Empty || lineId != Guid.Empty)
-            return $"{propertyId:N}|{reservationId:N}|{lineId:N}|{description}";
-
-        return split.TransferSplitId > 0
-            ? $"split:{split.TransferSplitId}"
-            : BuildTransferReportSplitGroupKey(split);
-    }
-
-    private static string NormalizeSecurityDepositReportDescription(string? description)
-    {
-        var value = (description ?? string.Empty).Trim();
-        if (value.EndsWith(" TBR", StringComparison.OrdinalIgnoreCase))
-            value = value[..^4].Trim();
-        return value;
-    }
-
     private static string BuildTransferReportDepositGroupKey(TransferSplit split)
     {
         var lineId = split.JournalEntryLineId ?? Guid.Empty;
@@ -407,127 +372,10 @@ public partial class AccountingManager
             : $"ctx:{NormalizeTransferReportDescription(split.Description)}";
     }
 
-    private static string BuildTransferReportSplitGroupKey(TransferSplit split)
-        => BuildTransferReportDepositGroupKey(split);
-
     private static bool IsSecurityDepositCardRefundPayment(Payment payment)
         => payment.PaymentTypeId is int paymentTypeId
             && IsSecurityDepositCardRefund((PaymentType)paymentTypeId)
             && IsSecurityDepositRefundMemo(payment.Description);
-
-    private static bool IsSecurityDepositAllocation(IReadOnlyList<TransferSplit> splits)
-        => splits.Count > 0 && splits.All(split => IsSecurityDepositAllocationMemo(split.Description));
-
-    private static TransferReportLineAllocationResult BuildSecurityDepositTransferReportRow(
-        IReadOnlyList<TransferSplit> splits,
-        int? transferBankAccountId,
-        int? escrowDepositAccountId,
-        int? ownersAccountId,
-        int? secDepAccountId,
-        int? sdwAccountId,
-        int? businessAccountId)
-    {
-        var escrow = 0m;
-        var ownerEscrow = 0m;
-        var secDep = 0m;
-        var sdw = 0m;
-        var business = 0m;
-        var contextSplit = splits[0];
-        var groupIncludesSecurityDepositAccount = secDepAccountId is > 0
-            && splits.Any(split => split.ChartOfAccountId == secDepAccountId && split.Amount != 0m);
-
-        foreach (var split in splits)
-        {
-            if (split.ChartOfAccountId is not > 0 || split.Amount == 0m)
-                continue;
-
-            var amount = RoundCurrency(split.Amount);
-            var accountId = split.ChartOfAccountId.Value;
-            if (escrowDepositAccountId is > 0 && accountId == escrowDepositAccountId)
-                escrow += amount > 0m ? -amount : amount;
-            else if (businessAccountId is > 0 && accountId == businessAccountId)
-                business += amount;
-            else if (ownersAccountId is > 0 && accountId == ownersAccountId)
-                ownerEscrow += amount;
-            else if (secDepAccountId is > 0 && accountId == secDepAccountId)
-                secDep += amount;
-            else if (sdwAccountId is > 0 && accountId == sdwAccountId)
-                sdw += amount;
-
-            if (groupIncludesSecurityDepositAccount || transferBankAccountId is not > 0 || transferBankAccountId == accountId)
-                continue;
-
-            var credit = RoundCurrency(-amount);
-            if (transferBankAccountId == escrowDepositAccountId)
-                escrow += credit < 0m ? Math.Abs(credit) : credit;
-            else if (transferBankAccountId == businessAccountId)
-                business += credit;
-            else if (transferBankAccountId == ownersAccountId)
-                ownerEscrow += credit;
-            else if (transferBankAccountId == secDepAccountId)
-                secDep += credit;
-            else if (transferBankAccountId == sdwAccountId)
-                sdw += credit;
-        }
-
-        if (!groupIncludesSecurityDepositAccount)
-        {
-            var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
-            if (Math.Abs(destinationTotal) > 0.005m)
-                escrow = destinationTotal;
-        }
-
-        return new TransferReportLineAllocationResult
-        {
-            JournalEntryLineId = contextSplit.JournalEntryLineId ?? Guid.Empty,
-            DepositId = Guid.Empty,
-            EscrowAmount = RoundCurrency(escrow),
-            OwnerEscrow = RoundCurrency(ownerEscrow),
-            SecDep = RoundCurrency(secDep),
-            Sdw = RoundCurrency(sdw),
-            Business = RoundCurrency(business),
-            PropertyId = contextSplit.PropertyId,
-            ReservationId = contextSplit.ReservationId,
-            ContactId = contextSplit.ContactId,
-            Description = splits
-                .Select(split => split.Description)
-                .FirstOrDefault(value => IsSecurityDepositAllocationMemo(value) && !IsSecurityDepositAllocationTbrMemo(value))
-                ?? contextSplit.Description
-                ?? string.Empty
-        };
-    }
-
-    private static TransferReportLineAllocationResult BuildSecurityDepositAllocationRow(IReadOnlyList<TransferSplit> splits, int? businessAccountId)
-    {
-        var contextSplit = splits[0];
-        var markedTbr = splits.Where(split => IsSecurityDepositAllocationTbrMemo(split.Description)).Sum(split => split.Amount);
-        var business = splits.Any(split => IsSecurityDepositAllocationTbrMemo(split.Description))
-            ? splits.Where(split => !IsSecurityDepositAllocationTbrMemo(split.Description)).Sum(split => split.Amount)
-            : businessAccountId is > 0
-                ? splits.Where(split => split.ChartOfAccountId == businessAccountId).Sum(split => split.Amount)
-                : 0m;
-        var tbr = splits.Any(split => IsSecurityDepositAllocationTbrMemo(split.Description))
-            ? markedTbr
-            : splits.Where(split => businessAccountId is not > 0 || split.ChartOfAccountId != businessAccountId).Sum(split => split.Amount);
-        return new TransferReportLineAllocationResult
-        {
-            JournalEntryLineId = Guid.Empty,
-            DepositId = Guid.Empty,
-            EscrowAmount = RoundCurrency(business + tbr),
-            OwnerEscrow = 0m,
-            SecDep = RoundCurrency(tbr),
-            Sdw = 0m,
-            Business = RoundCurrency(business),
-            PropertyId = contextSplit.PropertyId,
-            ReservationId = contextSplit.ReservationId,
-            ContactId = contextSplit.ContactId,
-            Description = splits
-                .Select(split => split.Description)
-                .FirstOrDefault(value => IsSecurityDepositAllocationMemo(value) && !IsSecurityDepositAllocationTbrMemo(value))
-                ?? contextSplit.Description
-                ?? string.Empty
-        };
-    }
 
     private static bool SplitsCarryTransferDestinationAccounts(IReadOnlyList<TransferSplit> splits, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
         => splits.Any(split => IsTransferReportDestinationAccount(split, ownersAccountId, secDepAccountId, sdwAccountId, businessAccountId));

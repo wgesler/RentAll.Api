@@ -240,20 +240,6 @@ public partial class ReportManager : IReportManager
             .ToList();
     }
 
-    private static List<JournalEntryRecapLine> MergeRecapLinesByJournalEntryLineId(
-        IEnumerable<JournalEntryRecapLine> primaryLines,
-        IEnumerable<JournalEntryRecapLine> supplementalLines)
-    {
-        var merged = new Dictionary<Guid, JournalEntryRecapLine>();
-        foreach (var line in primaryLines ?? [])
-            merged[line.JournalEntryLineId] = line;
-
-        foreach (var line in supplementalLines ?? [])
-            merged[line.JournalEntryLineId] = line;
-
-        return merged.Values.ToList();
-    }
-
     private static decimal GetLedgerCashStartingBalance(
         PropertyReportData property,
         JournalEntryRecapGetCriteria criteria,
@@ -750,38 +736,6 @@ public partial class ReportManager : IReportManager
         return null;
     }
 
-    private static bool TryGetPriorCalendarMonthReportPeriod(
-        DateOnly? startDate,
-        DateOnly? endDate,
-        out DateOnly priorStart,
-        out DateOnly priorEnd)
-    {
-        priorStart = default;
-        priorEnd = default;
-
-        var periodStart = GetReportPeriodStartDate(startDate, endDate);
-        var periodEnd = GetReportPeriodEndDate(startDate, endDate);
-        if (!periodStart.HasValue || !periodEnd.HasValue)
-            return false;
-
-        if (periodStart.Value.Day != 1)
-            return false;
-
-        var lastDayOfMonth = new DateOnly(
-            periodEnd.Value.Year,
-            periodEnd.Value.Month,
-            DateTime.DaysInMonth(periodEnd.Value.Year, periodEnd.Value.Month));
-        if (periodEnd.Value != lastDayOfMonth)
-            return false;
-
-        if (periodStart.Value.Year != periodEnd.Value.Year || periodStart.Value.Month != periodEnd.Value.Month)
-            return false;
-
-        priorEnd = periodStart.Value.AddDays(-1);
-        priorStart = new DateOnly(priorEnd.Year, priorEnd.Month, 1);
-        return true;
-    }
-
     private static JournalEntryRecapGetCriteria CloneJournalEntryRecapCriteriaWithDates(
         JournalEntryRecapGetCriteria criteria,
         DateOnly? startDate,
@@ -867,15 +821,6 @@ public partial class ReportManager : IReportManager
         string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase);
-
-    private static bool ShouldIncludeOwnerCashRecapLineByAccountingPeriod(JournalEntryRecapLine line, DateOnly? startDate, DateOnly? endDate)
-    {
-        var category = (line.RecapCategory ?? string.Empty).Trim();
-        if (!IsOwnerCashAccountingPeriodFilteredRecapCategory(category))
-            return true;
-
-        return IsAccountingPeriodInReportRange(line.AccountingPeriod, startDate, endDate);
-    }
 
     private static List<JournalEntryRecapLine> GetOwnerCashActivitySourceLines(RecapLineSet recapLineSet, JournalEntryRecapGetCriteria criteria)
     {
@@ -1252,9 +1197,6 @@ public partial class ReportManager : IReportManager
 
         return AccountingManager.IsLegacyOwnerStatementPaymentMemo(group.OwnerExpenseMemo);
     }
-
-    private static bool IsRecapRowWithOwnerActivity(RecapReportRow row) =>
-        row.OwnerRentValue != 0 || row.UnPaidValue != 0 || row.OwnerUnrecValue != 0 || row.OwnerExpenseValue != 0 || row.OwnerPaymentReceivedValue != 0 || row.PaymentValue != 0;
 
     private static bool IsOwnerReportRecapCategory(string category) =>
         string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)

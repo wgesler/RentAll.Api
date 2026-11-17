@@ -217,15 +217,6 @@ public partial class AccountingManager
         }
     }
 
-    private static void MergeSyncResults(JournalEntrySyncResult target, JournalEntrySyncResult source)
-    {
-        target.DocumentsProcessed += source.DocumentsProcessed;
-        target.JournalEntriesCreated += source.JournalEntriesCreated;
-        target.JournalEntriesSkipped += source.JournalEntriesSkipped;
-        target.JournalEntriesDeleted += source.JournalEntriesDeleted;
-        target.Errors.AddRange(source.Errors);
-    }
-
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)
     {
         var invoices = _officeSyncCache != null

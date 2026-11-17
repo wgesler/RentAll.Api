@@ -28,8 +28,8 @@ public class SecurityDepositRePaymentTests
         var arLines = entry.JournalEntryLines.Where(line => line.ChartOfAccountId == ArAccountId).ToList();
         Assert.Equal(2, arLines.Count);
         Assert.All(arLines, line => Assert.Equal(0m, line.Debit));
-        Assert.Equal(82.58m, arLines.Single(line => line.Memo.Contains(september.InvoiceCode)).Credit);
-        Assert.Equal(100m, arLines.Single(line => line.Memo.Contains(october.InvoiceCode)).Credit);
+        Assert.Equal(82.58m, arLines.Single(line => (line.Memo ?? string.Empty).Contains(september.InvoiceCode)).Credit);
+        Assert.Equal(100m, arLines.Single(line => (line.Memo ?? string.Empty).Contains(october.InvoiceCode)).Credit);
         Assert.Equal(entry.JournalEntryLines.Sum(line => line.Debit), entry.JournalEntryLines.Sum(line => line.Credit));
     }
 

@@ -7,12 +7,9 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.ESignature;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
-
 namespace RentAll.Infrastructure.Services;
 
 public class DocuSignService : IDocuSignService
@@ -459,141 +456,6 @@ public class DocuSignService : IDocuSignService
         return senderViewResponse.Url;
     }
 
-    private string CreateJwtAssertion(DocuSignCredentials credentials)
-    {
-        try
-        {
-            using var rsa = RSA.Create();
-            ImportDocuSignPrivateKey(rsa, credentials.PrivateKey);
-
-            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-            var headerJson = JsonSerializer.Serialize(new Dictionary<string, object>
-            {
-                ["alg"] = "RS256",
-                ["typ"] = "JWT"
-            });
-
-            var payloadJson = JsonSerializer.Serialize(new Dictionary<string, object>
-            {
-                ["iss"] = credentials.ClientId,
-                ["sub"] = credentials.UserId,
-                ["aud"] = _settings.AuthServer,
-                ["iat"] = now,
-                ["exp"] = now + 3600,
-                ["scope"] = "signature impersonation"
-            });
-
-            var header = Base64UrlEncode(Encoding.UTF8.GetBytes(headerJson));
-            var payload = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
-            var unsignedToken = $"{header}.{payload}";
-
-            var signatureBytes = rsa.SignData(
-                Encoding.UTF8.GetBytes(unsignedToken),
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
-
-            var signature = Base64UrlEncode(signatureBytes);
-            return $"{unsignedToken}.{signature}";
-        }
-        catch (Exception ex)
-        {
-            var keyDiagnostics = DescribePrivateKeyDiagnostics(credentials.PrivateKey);
-
-            _logger.LogError(
-                ex,
-                "Failed to build DocuSign JWT assertion. PrivateKey secret '{SecretName}'. {KeyDiagnostics}",
-                RentAllPrivateKeySecretName,
-                keyDiagnostics);
-
-            throw new InvalidOperationException(
-                $"DocuSign JWT signing failed before the token HTTP call. {keyDiagnostics} Details: {GetExceptionDetail(ex)}",
-                ex);
-        }
-    }
-
-    private static string Base64UrlEncode(byte[] input)
-    {
-        return Convert.ToBase64String(input)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-    }
-
-    private static void ImportDocuSignPrivateKey(RSA rsa, string privateKey)
-    {
-        if (string.IsNullOrWhiteSpace(privateKey))
-            throw new InvalidOperationException("DocuSign private key is empty.");
-
-        var normalized = NormalizePrivateKeyText(privateKey);
-        var importErrors = new List<string>();
-
-        if (normalized.Contains("BEGIN", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                rsa.ImportFromPem(normalized);
-                return;
-            }
-            catch (Exception ex)
-            {
-                importErrors.Add($"ImportFromPem failed: {GetExceptionDetail(ex)}");
-            }
-
-            var pemBody = ExtractPemBody(normalized);
-            if (!string.IsNullOrWhiteSpace(pemBody))
-            {
-                try
-                {
-                    ImportRawPrivateKey(rsa, pemBody);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    importErrors.Add($"PEM body import failed: {GetExceptionDetail(ex)}");
-                }
-            }
-        }
-        else
-        {
-            try
-            {
-                ImportRawPrivateKey(rsa, normalized);
-                return;
-            }
-            catch (Exception ex)
-            {
-                importErrors.Add($"Raw base64 import failed: {GetExceptionDetail(ex)}");
-            }
-        }
-
-        throw new CryptographicException(
-            "DocuSign private key could not be imported as RSA. " + string.Join(" ", importErrors));
-    }
-
-    private static void ImportRawPrivateKey(RSA rsa, string base64KeyMaterial)
-    {
-        var rawKey = Convert.FromBase64String(StripBase64Whitespace(base64KeyMaterial));
-        try
-        {
-            rsa.ImportRSAPrivateKey(rawKey, out _);
-        }
-        catch (CryptographicException)
-        {
-            rsa.ImportPkcs8PrivateKey(rawKey, out _);
-        }
-    }
-
-    private static string ExtractPemBody(string pemText)
-    {
-        var match = Regex.Match(
-            pemText,
-            @"-----BEGIN [^-]+-----\s*(?<body>[A-Za-z0-9+/=\s]+?)\s*-----END [^-]+-----",
-            RegexOptions.Singleline | RegexOptions.IgnoreCase);
-
-        return match.Success ? match.Groups["body"].Value : string.Empty;
-    }
-
     private static string DescribePrivateKeyDiagnostics(string privateKey)
     {
         if (string.IsNullOrWhiteSpace(privateKey))
@@ -625,14 +487,6 @@ public class DocuSignService : IDocuSignService
             .Replace("\\n", "\n", StringComparison.Ordinal)
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace("\r", "\n", StringComparison.Ordinal);
-    }
-
-    private static string StripBase64Whitespace(string value)
-    {
-        return value
-            .Replace("\n", "", StringComparison.Ordinal)
-            .Replace(" ", "", StringComparison.Ordinal)
-            .Trim();
     }
 
     private static string FormatDocuSignApiError(

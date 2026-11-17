@@ -28,25 +28,6 @@ public partial class AccountingManager
             string.IsNullOrWhiteSpace(detail) ? string.Empty : $" {detail}");
     }
 
-    private void LogHealthPaymentFixTrace(
-        Payment payment,
-        string step,
-        string reason,
-        string? detail = null)
-    {
-        var paymentCode = string.IsNullOrWhiteSpace(payment.PaymentCode)
-            ? payment.PaymentId.ToString()
-            : payment.PaymentCode.Trim();
-        _logger.LogInformation(
-            "{Prefix} Step={Step} PaymentCode={PaymentCode} PaymentId={PaymentId} Reason={Reason}{Detail}",
-            HealthPaymentFixTracePrefix,
-            step,
-            paymentCode,
-            payment.PaymentId,
-            reason,
-            string.IsNullOrWhiteSpace(detail) ? string.Empty : $" {detail}");
-    }
-
     private async Task LogHealthPaymentFixFailureAsync(
         Payment payment,
         Guid currentUser,

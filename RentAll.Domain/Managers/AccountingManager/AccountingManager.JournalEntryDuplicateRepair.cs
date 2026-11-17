@@ -291,54 +291,5 @@ public partial class AccountingManager
 
         return deleted;
     }
-
-    private static bool IsHealthDepositJournalEntry(JournalEntry entry)
-        => entry.SourceTypeId == (int)SourceType.Deposit
-            || entry.JournalEntryKindId == JournalEntryKind.Deposit;
-
-    private async Task<int> PruneDuplicateOpenDepositJournalEntriesByDepositIdAsync(Guid depositId, Guid organizationId, Guid currentUser)
-    {
-        if (depositId == Guid.Empty)
-            return 0;
-
-        Deposit? deposit = null;
-        if (_officeSyncCache != null && _officeSyncCache.DepositsById.TryGetValue(depositId, out var cachedDeposit))
-            deposit = cachedDeposit;
-        else
-            deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
-
-        if (deposit == null || deposit.OfficeId <= 0)
-            return 0;
-
-        var openEntryIdsBefore = (await GetJournalEntriesByDepositIdCachedAsync(organizationId, depositId))
-            .Concat(await GetJournalEntriesForSourceAsync(organizationId, deposit.OfficeId, SourceType.Deposit, depositId))
-            .Where(entry => entry.PostingStatusId == PostingStatus.Open && IsHealthDepositJournalEntry(entry))
-            .Select(entry => entry.JournalEntryId)
-            .Distinct()
-            .ToHashSet();
-
-        var deleted = await _journalEntryRepository.PruneDuplicateOpenDepositJesAsync(
-            organizationId,
-            deposit.OfficeId.ToString(),
-            depositId.ToString());
-
-        if (deleted <= 0 || openEntryIdsBefore.Count == 0)
-            return deleted;
-
-        var openEntryIdsAfter = (await GetJournalEntriesByDepositIdCachedAsync(organizationId, depositId))
-            .Concat(await GetJournalEntriesForSourceAsync(organizationId, deposit.OfficeId, SourceType.Deposit, depositId))
-            .Where(entry => entry.PostingStatusId == PostingStatus.Open && IsHealthDepositJournalEntry(entry))
-            .Select(entry => entry.JournalEntryId)
-            .Distinct()
-            .ToHashSet();
-
-        foreach (var journalEntryId in openEntryIdsBefore)
-        {
-            if (!openEntryIdsAfter.Contains(journalEntryId))
-                RemoveFromOfficeSyncCache(journalEntryId);
-        }
-
-        return deleted;
-    }
     #endregion
 }

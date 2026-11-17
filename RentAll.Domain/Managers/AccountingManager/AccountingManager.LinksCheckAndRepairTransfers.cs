@@ -1112,13 +1112,6 @@ public partial class AccountingManager
         return null;
     }
 
-    private static bool TransferSplitGuidEquals(Guid? left, Guid? right)
-    {
-        var normalizedLeft = NormalizeOptionalGuid(left);
-        var normalizedRight = NormalizeOptionalGuid(right);
-        return normalizedLeft != null && normalizedRight != null && normalizedLeft == normalizedRight;
-    }
-
     private static bool TransferSplitJournalEntryLineIdsChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<TransferSplit>? reconciledSplits)
     {
         var currentLineIds = (reconciledSplits ?? [])

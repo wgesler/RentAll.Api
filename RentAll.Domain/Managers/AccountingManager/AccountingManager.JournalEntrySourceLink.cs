@@ -141,9 +141,6 @@ public partial class AccountingManager
     private static bool PaymentTransactionDateIsOnOrBeforeDeposit(DateOnly paymentDate, DateOnly depositDate)
         => paymentDate != default && depositDate != default && paymentDate <= depositDate;
 
-    private static bool DepositAccountingMonthIsOnOrBeforeTransfer(DateOnly depositDate, DateOnly transferDate)
-        => MoneyDateMonthIsOnOrBefore(depositDate, transferDate);
-
     private static bool DepositTransactionDateIsOnOrBeforeTransfer(DateOnly depositDate, DateOnly transferDate)
         => depositDate != default && transferDate != default && depositDate <= transferDate;
 
@@ -152,9 +149,6 @@ public partial class AccountingManager
 
     private static bool DepositMatchesTransferTransactionDate(Transfer transfer, Deposit deposit)
         => DepositMatchesTransferTransactionDate(transfer, deposit.DepositDate);
-
-    private static bool JournalEntryMatchesDepositAccountingMonth(Deposit deposit, DateOnly? paymentDate)
-        => paymentDate is { } date && PaymentAccountingMonthIsOnOrBeforeDeposit(date, deposit.DepositDate);
 
     private static bool PaymentMatchesDepositTransactionDate(Deposit deposit, DateOnly paymentDate)
         => PaymentTransactionDateIsOnOrBeforeDeposit(paymentDate, deposit.DepositDate);
