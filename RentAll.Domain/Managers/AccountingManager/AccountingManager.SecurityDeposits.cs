@@ -8,9 +8,9 @@ public partial class AccountingManager
 {
     #region Triggers
 
-    public async Task<UnreturnedSecurityDepositsResult> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, int? officeId = null)
+    public async Task<UnreturnedSecurityDepositsResult> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, int? officeId = null, bool includeCompleted = false)
     {
-        var rows = (await _reservationRepository.GetUnreturnedSecurityDepositsAsync(organizationId, officeAccess)).ToList();
+        var rows = (await _reservationRepository.GetUnreturnedSecurityDepositsAsync(organizationId, officeAccess, includeCompleted)).ToList();
         if (officeId is > 0)
             rows = rows.Where(row => row.OfficeId == officeId.Value).ToList();
 
@@ -23,7 +23,9 @@ public partial class AccountingManager
             .ToList();
 
         var officeIds = ResolveSecurityDepositSummaryOfficeIds(officeAccess, officeId, rows);
-        var totalDepositsOwed = RoundSecurityDepositAmount(rows.Sum(row => row.Deposit));
+        var totalDepositsOwed = RoundSecurityDepositAmount(rows
+            .Where(row => !(row.DepositReturned && row.PaymentProcessed))
+            .Sum(row => row.Deposit));
 
         decimal escrowBalance = 0m;
         var escrowAccountLabels = new List<string>();
@@ -189,7 +191,7 @@ public partial class AccountingManager
             return reservation;
         }
 
-        var (_, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
+        var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
         var invoices = await GetInvoicesForReservationsAsync(organizationId, reservation.OfficeId, [reservation.ReservationId]);
 
         var contactId = reservation.ContactIds.FirstOrDefault(id => id != Guid.Empty) is { } id && id != Guid.Empty ? id : reservation.CompanyId ?? Guid.Empty;
@@ -208,22 +210,26 @@ public partial class AccountingManager
             LineContext = new JournalEntryLineContext(reservation.PropertyId, reservation.PropertyCode, reservation.ReservationId, reservation.ReservationCode, contactId, reservation.ContactName)
         };
 
-        Payment? applicationPayment = null;
         Payment? refundPayment = null;
         Transfer? allocationTransfer = null;
         Invoice? refundInvoice = null;
+        Invoice? creditedInvoice = null;
         var chargeAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById).Sum(line => line.Amount));
+        var creditLine = BuildSecurityDepositCreditLine(depositContext, ResolveSecurityDepositCreditCostCodeId(invoices, office, costCodeById), costCodeById);
         try
         {
-            var outstandingInvoice = FindOutstandingSecurityDepositReturnInvoice(invoices, costCodeById);
-            var returnInvoice = outstandingInvoice;
+            var returnInvoice = FindOutstandingSecurityDepositReturnInvoice(invoices, costCodeById);
             if (returnInvoice == null)
             {
-                refundInvoice = await CreateSecurityDepositRefundInvoiceAsync(reservation, paymentDate, currentUser);
+                refundInvoice = await CreateSecurityDepositRefundInvoiceAsync(reservation, paymentDate, creditLine, currentUser);
                 returnInvoice = refundInvoice;
             }
+            else
+            {
+                returnInvoice = await AddSecurityDepositCreditLineAsync(returnInvoice, creditLine, currentUser);
+                creditedInvoice = returnInvoice;
+            }
 
-            applicationPayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, returnInvoice.InvoiceId, costCodeById, officeAccess);
             var refundAmount = RoundSecurityDepositAmount(amount);
             if (refundAmount != 0)
                 refundPayment = await CreateSecurityDepositRefundPaymentAsync(depositContext, returnInvoice.InvoiceId, costCodeById, officeAccess, refundAmount);
@@ -239,8 +245,8 @@ public partial class AccountingManager
                 await DeleteTransferAsync(allocationTransfer.TransferId, organizationId, currentUser);
             if (refundPayment != null)
                 await DeletePaymentAsync(refundPayment.PaymentId, organizationId, currentUser);
-            if (applicationPayment != null)
-                await DeletePaymentAsync(applicationPayment.PaymentId, organizationId, currentUser);
+            if (creditedInvoice != null)
+                await RemoveSecurityDepositCreditLinesAsync(creditedInvoice.InvoiceId, organizationId, currentUser);
             if (refundInvoice != null)
                 await DeleteInvoiceAsync(refundInvoice.InvoiceId, organizationId, currentUser);
             throw;
@@ -290,8 +296,15 @@ public partial class AccountingManager
 
         if (depositReturned)
         {
+            var linkedDocuments = await ResolveSecurityDepositUndoDocumentsAsync(organizationId, reservation);
+            foreach (var transfer in linkedDocuments.Transfers)
+                await DeleteTransferAsync(transfer.TransferId, organizationId, currentUser);
+            foreach (var deposit in linkedDocuments.Deposits)
+                await DeleteDepositAsync(deposit.DepositId, organizationId, currentUser);
+
             await DeleteSecurityDepositAllocationTransferAsync(organizationId, reservation, currentUser);
             await DeleteSecurityDepositApplicationPaymentsAsync(organizationId, reservation, currentUser);
+            await RemoveSecurityDepositCreditsAsync(organizationId, reservation, currentUser);
             await DeleteSecurityDepositRefundInvoicesAsync(organizationId, reservation, currentUser);
             foreach (var entry in entries.Where(entry => !IsSecurityDepositTransferJournalEntry(entry)))
             {
@@ -308,6 +321,140 @@ public partial class AccountingManager
             throw new Exception("Nothing to undo for this security deposit");
 
         return reservation;
+    }
+
+    public async Task<SecurityDepositUndoPreview> GetSecurityDepositUndoPreviewAsync(Guid reservationId, Guid organizationId)
+    {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+
+        var preview = new SecurityDepositUndoPreview { ReservationCode = reservation.ReservationCode };
+        if (!reservation.DepositReturned)
+            return preview;
+
+        var documents = await ResolveSecurityDepositUndoDocumentsAsync(organizationId, reservation);
+        var transfers = documents.Transfers.ToDictionary(transfer => transfer.TransferId);
+        foreach (var transfer in await FindSecurityDepositAllocationTransfersAsync(organizationId, reservation))
+            transfers.TryAdd(transfer.TransferId, transfer);
+
+        preview.Transfers = transfers.Values
+            .OrderBy(transfer => transfer.TransferDate)
+            .Select(transfer => new SecurityDepositUndoDocument
+            {
+                Id = transfer.TransferId,
+                Code = transfer.TransferCode,
+                Date = transfer.TransferDate,
+                Amount = transfer.Amount,
+                Description = transfer.Description,
+                IncludesOtherReservations = (transfer.Splits ?? []).Any(split => IsOtherReservation(split.ReservationId, reservation.ReservationId))
+            })
+            .ToList();
+        preview.Deposits = documents.Deposits
+            .OrderBy(deposit => deposit.DepositDate)
+            .Select(deposit => new SecurityDepositUndoDocument
+            {
+                Id = deposit.DepositId,
+                Code = deposit.DepositCode,
+                Date = deposit.DepositDate,
+                Amount = deposit.Amount,
+                Description = deposit.Description,
+                IncludesOtherReservations = (deposit.Splits ?? []).Any(split => IsOtherReservation(split.ReservationId, reservation.ReservationId))
+            })
+            .ToList();
+        preview.Payments = documents.Payments
+            .OrderBy(payment => payment.PaymentDate)
+            .Select(payment => new SecurityDepositUndoDocument
+            {
+                Id = payment.PaymentId,
+                Code = payment.PaymentCode,
+                Date = payment.PaymentDate,
+                Amount = payment.Amount,
+                Description = payment.Description
+            })
+            .ToList();
+        preview.Invoices = documents.RefundInvoices
+            .Select(invoice => new SecurityDepositUndoDocument
+            {
+                Id = invoice.InvoiceId,
+                Code = invoice.InvoiceCode,
+                Date = invoice.InvoiceDate,
+                Amount = invoice.TotalAmount,
+                Description = invoice.Notes ?? string.Empty
+            })
+            .ToList();
+        var refundInvoiceIds = documents.RefundInvoices.Select(invoice => invoice.InvoiceId).ToHashSet();
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(organizationId, reservation.OfficeId);
+        foreach (var invoice in documents.Invoices.Where(invoice => !refundInvoiceIds.Contains(invoice.InvoiceId)))
+        {
+            foreach (var creditLine in (invoice.LedgerLines ?? []).Where(line => IsSecurityDepositCreditLine(line, costCodeById)))
+            {
+                preview.Invoices.Add(new SecurityDepositUndoDocument
+                {
+                    Id = invoice.InvoiceId,
+                    Code = invoice.InvoiceCode,
+                    Date = creditLine.LedgerLineDate,
+                    Amount = creditLine.Amount,
+                    Description = $"Remove line: {creditLine.Description}"
+                });
+            }
+        }
+        return preview;
+    }
+
+    private static bool IsOtherReservation(Guid? splitReservationId, Guid reservationId)
+        => splitReservationId is { } id && id != Guid.Empty && id != reservationId;
+
+    private async Task<SecurityDepositUndoDocuments> ResolveSecurityDepositUndoDocumentsAsync(Guid organizationId, Reservation reservation)
+    {
+        var invoices = await GetInvoicesForReservationsAsync(organizationId, reservation.OfficeId, [reservation.ReservationId]);
+        var payments = await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservation.ReservationCode);
+
+        var depositIds = new HashSet<Guid>();
+        foreach (var payment in payments)
+        {
+            if (payment.DepositId is { } paymentDepositId && paymentDepositId != Guid.Empty)
+                depositIds.Add(paymentDepositId);
+
+            foreach (var entry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
+            {
+                if (entry.DepositId is { } entryDepositId && entryDepositId != Guid.Empty)
+                    depositIds.Add(entryDepositId);
+            }
+        }
+
+        var deposits = new List<Deposit>();
+        foreach (var depositId in depositIds)
+        {
+            var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+            if (deposit != null)
+                deposits.Add(deposit);
+        }
+
+        var transfers = new List<Transfer>();
+        foreach (var transferId in deposits
+            .Select(deposit => deposit.TransferId)
+            .Where(id => id is { } value && value != Guid.Empty)
+            .Select(id => id!.Value)
+            .Distinct())
+        {
+            var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId);
+            if (transfer != null)
+                transfers.Add(transfer);
+        }
+
+        var refundNote = BuildSecurityDepositRefundMemo(reservation.ReservationCode);
+        var refundInvoices = invoices
+            .Where(invoice => string.Equals(invoice.Notes?.Trim(), refundNote, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return new SecurityDepositUndoDocuments
+        {
+            Invoices = invoices,
+            Payments = payments,
+            Deposits = deposits,
+            Transfers = transfers,
+            RefundInvoices = refundInvoices
+        };
     }
 
     public async Task SetSecurityDepositPaymentProcessedAsync(Guid reservationId, Guid organizationId, bool paymentProcessed, Guid currentUser)
@@ -338,7 +485,7 @@ public partial class AccountingManager
             .LastOrDefault(invoice => CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) > 0m);
     }
 
-    private async Task<Invoice> CreateSecurityDepositRefundInvoiceAsync(Reservation reservation, DateOnly paymentDate, Guid currentUser)
+    private async Task<Invoice> CreateSecurityDepositRefundInvoiceAsync(Reservation reservation, DateOnly paymentDate, LedgerLine creditLine, Guid currentUser)
     {
         var invoiceCode = await ResolveNextReservationInvoiceCodeAsync(reservation.OrganizationId, reservation);
         var contactId = reservation.ContactIds.FirstOrDefault(id => id != Guid.Empty);
@@ -362,14 +509,85 @@ public partial class AccountingManager
             DueDate = paymentDate,
             AccountingPeriod = accountingPeriod,
             InvoicePeriod = FormatInvoicePeriod(paymentDate, paymentDate),
-            TotalAmount = 0,
+            TotalAmount = creditLine.Amount,
             PaidAmount = 0,
             Notes = BuildSecurityDepositRefundMemo(reservation.ReservationCode),
             IsActive = true,
             CreatedBy = currentUser
         };
+        creditLine.LineNumber = 1;
+        invoice.LedgerLines.Add(creditLine);
 
         return await CreateInvoiceAsync(invoice, currentUser);
+    }
+
+    private async Task<Invoice> AddSecurityDepositCreditLineAsync(Invoice invoice, LedgerLine creditLine, Guid currentUser)
+    {
+        creditLine.InvoiceId = invoice.InvoiceId;
+        creditLine.LineNumber = invoice.LedgerLines.Count == 0 ? 1 : invoice.LedgerLines.Max(line => line.LineNumber) + 1;
+        invoice.LedgerLines.Add(creditLine);
+        invoice.TotalAmount += creditLine.Amount;
+        invoice.ModifiedBy = currentUser;
+        return await UpdateInvoiceAsync(invoice);
+    }
+
+    private async Task RemoveSecurityDepositCreditLinesAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
+    {
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, organizationId);
+        if (invoice == null)
+            return;
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(organizationId, invoice.OfficeId);
+        var creditLines = invoice.LedgerLines.Where(line => IsSecurityDepositCreditLine(line, costCodeById)).ToList();
+        if (creditLines.Count == 0)
+            return;
+
+        foreach (var creditLine in creditLines)
+            invoice.LedgerLines.Remove(creditLine);
+        invoice.TotalAmount -= creditLines.Sum(line => line.Amount);
+        invoice.ModifiedBy = currentUser;
+        await UpdateInvoiceAsync(invoice);
+    }
+
+    private async Task RemoveSecurityDepositCreditsAsync(Guid organizationId, Reservation reservation, Guid currentUser)
+    {
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(organizationId, reservation.OfficeId);
+        var invoices = await GetInvoicesForReservationsAsync(organizationId, reservation.OfficeId, [reservation.ReservationId]);
+        foreach (var invoice in invoices.Where(invoice => (invoice.LedgerLines ?? []).Any(line => IsSecurityDepositCreditLine(line, costCodeById))))
+            await RemoveSecurityDepositCreditLinesAsync(invoice.InvoiceId, organizationId, currentUser);
+    }
+
+    private static int ResolveSecurityDepositCreditCostCodeId(IReadOnlyList<Invoice> invoices, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var chargedCostCodeId = invoices
+            .OrderBy(invoice => invoice.InvoiceDate)
+            .ThenBy(invoice => invoice.InvoiceCode)
+            .SelectMany(invoice => invoice.LedgerLines ?? [])
+            .Where(line => line.Amount > 0m && IsRefundableSecurityDepositCharge(line, costCodeById))
+            .Select(line => line.CostCodeId)
+            .FirstOrDefault();
+        if (chargedCostCodeId > 0)
+            return chargedCostCodeId;
+
+        if (office?.SecurityDepositCcId is int securityDepositCcId && costCodeById.ContainsKey(securityDepositCcId))
+            return securityDepositCcId;
+
+        throw new Exception("No Security Deposit cost code is configured for this office");
+    }
+
+    private static LedgerLine BuildSecurityDepositCreditLine(SecurityDepositContext context, int costCodeId, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var line = new LedgerLine
+        {
+            ReservationId = context.ReservationId,
+            CostCodeId = costCodeId,
+            Amount = -RoundSecurityDepositAmount(context.CollectedAmount),
+            Description = BuildSecurityDepositCreditMemo(context.ReservationCode),
+            LedgerLineDate = context.PaymentDate,
+            CreatedBy = context.CurrentUser
+        };
+        ApplyTransactionTypeFromCostCode(line, costCodeById);
+        return line;
     }
 
     private async Task DeleteSecurityDepositRefundInvoicesAsync(Guid organizationId, Reservation reservation, Guid currentUser)
@@ -387,35 +605,6 @@ public partial class AccountingManager
 
             await DeleteInvoiceAsync(invoice.InvoiceId, organizationId, currentUser);
         }
-    }
-
-    private async Task<Payment> CreateSecurityDepositInvoicePaymentAsync(SecurityDepositContext context, Guid invoiceId, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess)
-    {
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
-        var (office, _) = await LoadOfficeCostCodeContextAsync(context.OrganizationId, context.OfficeId);
-        var appliedCostCodeId = ResolveAppliedSecurityDepositPaymentCostCodeId(office, costCodeById);
-        costCodeById.TryGetValue(appliedCostCodeId, out var appliedCostCode);
-        var appliedAccountId = GetChartOfAccountIdByCostCode(
-            chartOfAccounts,
-            context.OfficeId,
-            appliedCostCode,
-            GetDefaultSecurityDepositAccount(chartOfAccounts, context.OfficeId, office, costCodeById, accountingOffice));
-        var payment = new Payment
-        {
-            OrganizationId = context.OrganizationId,
-            OfficeId = context.OfficeId,
-            PaymentDate = context.PaymentDate,
-            Amount = context.CollectedAmount,
-            CostCodeId = appliedCostCodeId,
-            Description = context.Memo,
-            PaymentKindId = (int)PaymentKind.Invoice,
-            PaymentTypeId = (int)PaymentType.SecurityDeposit,
-            ChartOfAccountId = appliedAccountId,
-            IsActive = true,
-            CreatedBy = context.CurrentUser
-        };
-
-        return await ApplyInvoicePaymentAsync(payment, new List<Guid> { invoiceId }, null, officeAccess, context.CurrentUser);
     }
 
     private async Task<Payment> CreateSecurityDepositRefundPaymentAsync(SecurityDepositContext context, Guid invoiceId, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess, decimal refundAmount)
@@ -536,46 +725,23 @@ public partial class AccountingManager
 
     private async Task DeleteSecurityDepositAllocationTransferAsync(Guid organizationId, Reservation reservation, Guid currentUser)
     {
+        foreach (var transfer in await FindSecurityDepositAllocationTransfersAsync(organizationId, reservation))
+            await DeleteTransferAsync(transfer.TransferId, organizationId, currentUser);
+    }
+
+    private async Task<List<Transfer>> FindSecurityDepositAllocationTransfersAsync(Guid organizationId, Reservation reservation)
+    {
         var transfers = await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
         {
             OrganizationId = organizationId,
             OfficeIds = reservation.OfficeId.ToString(CultureInfo.InvariantCulture),
             IncludeInactive = true
         });
-        foreach (var transfer in transfers ?? [])
-        {
-            var matchesReservation = transfer.Splits?.Any(split => split.ReservationId == reservation.ReservationId) == true
-                || IsSecurityDepositTransferForReservation(transfer.Description, reservation.ReservationCode);
-            if (matchesReservation && IsSecurityDepositAllocationMemo(transfer.Description))
-                await DeleteTransferAsync(transfer.TransferId, organizationId, currentUser);
-        }
-    }
-
-    private static int ResolveAppliedSecurityDepositPaymentCostCodeId(Office? office, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        if (office?.SecurityDepositCcId is not int securityDepositCcId
-            || securityDepositCcId <= 0
-            || !costCodeById.TryGetValue(securityDepositCcId, out var securityDepositCostCode)
-            || string.IsNullOrWhiteSpace(securityDepositCostCode.Code))
-            throw new Exception("No Security Deposit cost code is configured for this office");
-
-        var paymentCostCodes = costCodeById.Values
-            .Where(code => code.IsActive
-                && code.TransactionType == TransactionType.Payment
-                && string.Equals(code.Code, securityDepositCostCode.Code, StringComparison.OrdinalIgnoreCase))
+        return (transfers ?? [])
+            .Where(transfer => (transfer.Splits?.Any(split => split.ReservationId == reservation.ReservationId) == true
+                    || IsSecurityDepositTransferForReservation(transfer.Description, reservation.ReservationCode))
+                && IsSecurityDepositAllocationMemo(transfer.Description))
             .ToList();
-        var appliedCostCode = paymentCostCodes
-            .Where(code => code.Description.Contains("Applied", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(code => code.CostCodeId)
-            .FirstOrDefault()
-            ?? paymentCostCodes
-                .Where(code => !code.Description.Contains("Refund", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(code => code.CostCodeId)
-                .FirstOrDefault();
-        if (appliedCostCode == null)
-            throw new Exception($"No payment cost code is configured for security deposit account {securityDepositCostCode.Code}");
-
-        return appliedCostCode.CostCodeId;
     }
 
     private static int ResolveSecurityDepositRefundPaymentCostCodeId(IReadOnlyDictionary<int, CostCode> costCodeById, List<ChartOfAccount> chartOfAccounts, int officeId, int chartOfAccountId, PaymentType paymentType)
@@ -759,6 +925,7 @@ public partial class AccountingManager
         var chargeLines = invoice.LedgerLines
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+            .Where(line => !IsSecurityDepositCreditLine(line, costCodeById))
             .OrderBy(line => line.LineNumber)
             .ToList();
 
@@ -866,6 +1033,7 @@ public partial class AccountingManager
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
             .Where(line => !IsRefundableSecurityDepositCharge(line, costCodeById))
+            .Where(line => !IsIgnoredSecurityDepositCredit(line, costCodeById, ignoredPaymentIds))
             .Sum(line => line.Amount));
 
         var paymentTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
@@ -901,8 +1069,27 @@ public partial class AccountingManager
     }
 
     private static bool IsRefundableSecurityDepositCharge(LedgerLine line, IReadOnlyDictionary<int, CostCode> costCodeById)
+        => IsSecurityDepositCostCodeLine(line, costCodeById)
+            && !IsSecurityDepositCreditLine(line, costCodeById);
+
+    private static bool IsSecurityDepositCostCodeLine(LedgerLine line, IReadOnlyDictionary<int, CostCode> costCodeById)
         => costCodeById.TryGetValue(line.CostCodeId, out var costCode)
             && costCode.TransactionType == TransactionType.SecurityDeposit;
+
+    private static bool IsSecurityDepositCreditLine(LedgerLine line, IReadOnlyDictionary<int, CostCode> costCodeById)
+        => line.Amount < 0m
+            && IsSecurityDepositCostCodeLine(line, costCodeById)
+            && IsSecurityDepositCreditMemo(line.Description);
+
+    // A non-null ignore set means "before the deposit was applied", so the return credit is excluded with the application payments.
+    private static bool IsIgnoredSecurityDepositCredit(LedgerLine line, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlySet<Guid>? ignoredPaymentIds)
+        => ignoredPaymentIds != null && IsSecurityDepositCreditLine(line, costCodeById);
+
+    private static decimal CalculateSecurityDepositCreditAmount(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
+        => RoundSecurityDepositAmount(invoices
+            .SelectMany(invoice => invoice.LedgerLines ?? [])
+            .Where(line => IsSecurityDepositCreditLine(line, costCodeById))
+            .Sum(line => Math.Abs(line.Amount)));
 
     private static bool IsIgnoredSecurityDepositPayment(LedgerLine line, IReadOnlySet<Guid>? ignoredPaymentIds)
         => ignoredPaymentIds != null
@@ -1180,7 +1367,8 @@ public partial class AccountingManager
             .ToHashSet();
         var rePaymentAmount = RoundSecurityDepositAmount(applicationPayments
             .Where(payment => IsSecurityDepositPaymentMemo(payment.Description, reservationCode))
-            .Sum(payment => payment.Amount));
+            .Sum(payment => payment.Amount)
+            + CalculateSecurityDepositCreditAmount(invoices, costCodeById));
         var depositAmount = 0m;
         var collectedAmount = 0m;
         foreach (var sdInvoice in securityDepositInvoices)
@@ -1298,6 +1486,7 @@ public partial class AccountingManager
             .SelectMany(invoice => (invoice.LedgerLines ?? [])
                 .Where(line => line.Amount != 0m)
                 .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+                .Where(line => !IsSecurityDepositCreditLine(line, costCodeById))
                 .Select(line => new ReservationChargeLineBalance
                 {
                     Invoice = invoice,
@@ -1309,11 +1498,28 @@ public partial class AccountingManager
             .ThenBy(entry => entry.Line.LineNumber)
             .ToList();
 
+        var creditLines = invoices
+            .SelectMany(invoice => invoice.LedgerLines ?? [])
+            .Where(line => IsSecurityDepositCreditLine(line, costCodeById))
+            .Where(line => !IsIgnoredSecurityDepositCredit(line, costCodeById, ignoredPaymentIds))
+            .Select(line => new LedgerLine
+            {
+                LedgerLineId = line.LedgerLineId,
+                InvoiceId = line.InvoiceId,
+                LineNumber = line.LineNumber,
+                ReservationId = line.ReservationId,
+                CostCodeId = line.CostCodeId,
+                Amount = -line.Amount,
+                Description = line.Description,
+                LedgerLineDate = line.LedgerLineDate
+            });
+
         var paymentLines = invoices
             .SelectMany(invoice => invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
             .Where(line => !IsIgnoredSecurityDepositPayment(line, ignoredPaymentIds))
+            .Concat(creditLines)
             .OrderBy(line => line.LedgerLineDate)
             .ThenBy(line => line.LineNumber)
             .ToList();
@@ -1364,6 +1570,7 @@ public partial class AccountingManager
         var chargeLines = invoice.LedgerLines
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+            .Where(line => !IsSecurityDepositCreditLine(line, costCodeById))
             .OrderBy(line => line.LineNumber)
             .ToList();
 
@@ -1536,6 +1743,15 @@ public partial class AccountingManager
         public JournalEntryLineContext LineContext { get; init; }
     }
 
+    private sealed class SecurityDepositUndoDocuments
+    {
+        public List<Invoice> Invoices { get; init; } = [];
+        public List<Payment> Payments { get; init; } = [];
+        public List<Deposit> Deposits { get; init; } = [];
+        public List<Transfer> Transfers { get; init; } = [];
+        public List<Invoice> RefundInvoices { get; init; } = [];
+    }
+
     private class ReservationInvoiceEnrichment
     {
         public Dictionary<Guid, decimal> OwedByReservation { get; init; } = new();
@@ -1582,6 +1798,12 @@ public partial class AccountingManager
 
     private static string BuildSecurityDepositRefundMemo(string reservationCode)
         => $"{reservationCode.Trim()}: Security Deposit Refund";
+
+    private static string BuildSecurityDepositCreditMemo(string reservationCode)
+        => $"{reservationCode.Trim()}: Security Deposit Credit";
+
+    private static bool IsSecurityDepositCreditMemo(string? description)
+        => (description ?? string.Empty).Contains(": Security Deposit Credit", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildSecurityDepositAllocationMemo(string reservationCode)
         => $"{reservationCode.Trim()}: Security Deposit Transfer";

@@ -746,6 +746,7 @@ public partial class AccountingManager
         ledgerLine = null!;
         var match = invoice.LedgerLines
             .Where(line => line.Amount != 0)
+            .Where(line => !IsSecurityDepositCreditLine(line, costCodeById))
             .FirstOrDefault(line =>
             {
                 costCodeById.TryGetValue(line.CostCodeId, out var costCode);

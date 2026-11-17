@@ -35,11 +35,7 @@ public partial class AccountingManager
 
         return invoice.LedgerLines
             .Where(line => line.Amount != 0)
-            .Where(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType == TransactionType.SecurityDeposit;
-            })
+            .Where(line => IsRefundableSecurityDepositCharge(line, costCodeById))
             .Sum(line => line.Amount);
     }
 

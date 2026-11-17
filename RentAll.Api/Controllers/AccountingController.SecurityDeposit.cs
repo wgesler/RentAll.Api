@@ -5,14 +5,15 @@ public partial class AccountingController
     #region Get
 
     [HttpGet("security-deposit/unreturned")]
-    public async Task<IActionResult> GetUnreturnedSecurityDepositsAsync([FromQuery] int? officeId = null)
+    public async Task<IActionResult> GetUnreturnedSecurityDepositsAsync([FromQuery] int? officeId = null, [FromQuery] bool includeCompleted = false)
     {
         try
         {
             var result = await _accountingManager.GetUnreturnedSecurityDepositsAsync(
                 CurrentOrganizationId,
                 CurrentOfficeAccess,
-                officeId);
+                officeId,
+                includeCompleted);
             return Ok(new UnreturnedSecurityDepositsResponseDto(result));
         }
         catch (Exception ex)
@@ -36,6 +37,21 @@ public partial class AccountingController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting security deposit detail for reservation: {ReservationId}", reservationId);
+            return ServerError(ex.Message);
+        }
+    }
+
+    [HttpGet("security-deposit/{reservationId:guid}/undo-preview")]
+    public async Task<IActionResult> GetSecurityDepositUndoPreviewAsync(Guid reservationId)
+    {
+        try
+        {
+            var result = await _accountingManager.GetSecurityDepositUndoPreviewAsync(reservationId, CurrentOrganizationId);
+            return Ok(new SecurityDepositUndoPreviewResponseDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting security deposit undo preview for reservation: {ReservationId}", reservationId);
             return ServerError(ex.Message);
         }
     }

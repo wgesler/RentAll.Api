@@ -578,6 +578,7 @@ public partial class AccountingManager
         var escrowAmount = Math.Abs(mainBankAmount) > 0.005m
             ? NormalizeTransferReportEscrowSourceAmount(mainBankAmount, destinationTotal)
             : ResolveTransferReportEscrowSourceAmount(splits, destinationTotal);
+        AlignTransferReportDestinationsToMainSign(escrowAmount, ref ownerEscrow, ref secDep, ref sdw, ref business);
 
         return new TransferReportLineAllocationResult
         {
@@ -613,11 +614,21 @@ public partial class AccountingManager
         if (Math.Abs(source) <= 0.005m)
             return destination;
 
-        // Normal outflow from escrow: credited on 1002 (negative net), positive destination splits.
-        if (source < 0 && destination > 0.005m)
-            return RoundCurrency(Math.Abs(source));
-
         return source;
+    }
+
+    private static void AlignTransferReportDestinationsToMainSign(decimal mainAmount, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal business)
+    {
+        var destination = RoundCurrency(ownerEscrow + secDep + sdw + business);
+        if (Math.Abs(mainAmount) <= 0.005m || Math.Abs(destination) <= 0.005m)
+            return;
+        if (Math.Sign(mainAmount) == Math.Sign(destination))
+            return;
+
+        ownerEscrow = RoundCurrency(-ownerEscrow);
+        secDep = RoundCurrency(-secDep);
+        sdw = RoundCurrency(-sdw);
+        business = RoundCurrency(-business);
     }
 
     private async Task<TransferReportLineAllocationResult?> TryClassifyTransferReportGroupAsync(Guid organizationId, int officeId, IReadOnlyList<TransferSplit> splits, TransferDepositRecapAccountContext recapContext)
@@ -992,9 +1003,11 @@ public partial class AccountingManager
             return null;
 
         payment = cardRefund;
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(organizationId, deposit.OfficeId);
         var fullAmount = RoundSecurityDepositAmount(applicationPayments
             .Where(item => IsSecurityDepositPaymentMemo(item.Description, reservationCode))
-            .Sum(item => item.Amount));
+            .Sum(item => item.Amount)
+            + CalculateSecurityDepositCreditAmount(invoices, costCodeById));
         var refundAmount = RoundSecurityDepositAmount(Math.Abs(payment.Amount));
         if (fullAmount <= 0.005m)
             fullAmount = refundAmount;
