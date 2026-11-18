@@ -1,5 +1,6 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Accounting;
 
 namespace RentAll.Domain.Interfaces.Repositories;
 
@@ -234,5 +235,11 @@ public interface IAccountingRepository
         int officeId,
         Guid propertyId,
         string memo);
+    #endregion
+
+    #region NumberCredentials
+    Task<NumberCredential?> GetNumberCredentialByOfficeIdAsync(Guid organizationId, int officeId);
+    Task<NumberCredential> AddNumberCredentialAsync(NumberCredential credential);
+    Task<NumberCredential> UpdateNumberCredentialByOfficeIdAsync(NumberCredential credential);
     #endregion
 }

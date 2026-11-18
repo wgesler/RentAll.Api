@@ -16,11 +16,13 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IReservationRepository _reservationRepository;
         private readonly IAccountingManager _accountingManager;
+        private readonly IAccountingRepository _accountingRepository;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
         private readonly IContactManager _contactManager;
         private readonly IExternalApiKeyService _externalApiKeyService;
         private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
+        private readonly INumberService _numberService;
         private readonly ILogger<ReservationController> _logger;
 
         public ReservationController(
@@ -28,22 +30,26 @@ namespace RentAll.Api.Controllers
             IOrganizationRepository organizationRepository,
             IReservationRepository reservationRepository,
             IAccountingManager accountingManager,
+            IAccountingRepository accountingRepository,
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
             IContactManager contactManager,
             IExternalApiKeyService externalApiKeyService,
             ExternalPropertyUploadLogService externalPropertyUploadLogService,
+            INumberService numberService,
             ILogger<ReservationController> logger)
         {
             _organizationManager = organizationManager;
             _organizationRepository = organizationRepository;
             _reservationRepository = reservationRepository;
             _accountingManager = accountingManager;
+            _accountingRepository = accountingRepository;
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
             _contactManager = contactManager;
             _externalApiKeyService = externalApiKeyService;
             _externalPropertyUploadLogService = externalPropertyUploadLogService;
+            _numberService = numberService;
             _logger = logger;
         }
     }

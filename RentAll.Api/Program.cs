@@ -54,6 +54,7 @@ builder.Services.AddScoped<StorageSettings>();
 // Configure SendGrid settings
 var sendGridSettings = builder.Configuration.GetSection("SendGridSettings");
 builder.Services.Configure<SendGridSettings>(sendGridSettings);
+builder.Services.Configure<NumberSettings>(builder.Configuration.GetSection("NumberSettings"));
 
 // Configure DocuSign settings
 var docuSignSettings = builder.Configuration.GetSection("DocuSignSettings");
@@ -133,6 +134,8 @@ builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddHttpClient(nameof(NumberService));
+builder.Services.AddScoped<INumberService, NumberService>();
 builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
 builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();
 builder.Services.AddScoped<ReceiptExtractEnrichmentService>();

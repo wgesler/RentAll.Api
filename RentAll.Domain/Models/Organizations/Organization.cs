@@ -49,6 +49,10 @@ public class Organization
 
     public string? GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--");
 
+    public string? GetNumberAcctCodeKeyVaultSecretName() => GetKeyVaultSecretName("easypay-acct-code--", "default");
+
+    public string? GetNumberTokenKeyVaultSecretName() => GetKeyVaultSecretName("easypay-token--", "default");
+
     public string? GetExternalPropertyKeyVaultSecretName() => GetKeyVaultSecretName("external-property-api-key--");
 
     public string? GetExternalLeadKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-api-key--");
