@@ -41,12 +41,17 @@ public partial class ReservationController
         Reservation? reservation = null;
         try
         {
-            if (string.IsNullOrWhiteSpace(_sendGridSettings.PaymentInformationRequestTemplateId))
-                return BadRequest("SendGridSettings:PaymentInformationRequestTemplateId is not set.");
-
             reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, CurrentOrganizationId);
             if (reservation == null)
                 return NotFound("Reservation not found");
+
+            // Email.EmailTemplate (office row, then organization row) wins; appsettings is the fallback.
+            var storedTemplate = await _emailRepository.GetEmailTemplateByNameAsync(CurrentOrganizationId, reservation.OfficeId, EmailTemplateNames.PaymentRequest);
+            var templateId = storedTemplate?.TemplateId?.Trim();
+            if (string.IsNullOrWhiteSpace(templateId))
+                templateId = _sendGridSettings.PaymentInformationRequestTemplateId?.Trim();
+            if (string.IsNullOrWhiteSpace(templateId))
+                return BadRequest($"No SendGrid template is set for {EmailTemplateNames.PaymentRequest}. Add one to Email.EmailTemplate.");
 
             var organization = await _organizationRepository.GetOrganizationByIdAsync(CurrentOrganizationId);
             if (organization == null)
@@ -86,12 +91,14 @@ public partial class ReservationController
                 ToRecipients = [EmailAddress.Create(toEmail, toName)],
                 Subject = "Your Payment Details Are Needed",
                 PlainTextContent = string.Empty,
-                HtmlContent = $"Payment request sent with SendGrid template {_sendGridSettings.PaymentInformationRequestTemplateId}. PaymentUrl={paymentUrl}",
-                TemplateId = _sendGridSettings.PaymentInformationRequestTemplateId,
+                HtmlContent = $"Payment request sent with SendGrid template {templateId}. PaymentUrl={paymentUrl}",
+                TemplateId = templateId,
                 TemplateData = new Dictionary<string, object?>
                 {
                     ["salutationName"] = salutationName,
                     ["companyName"] = organization.Name ?? string.Empty,
+                    ["companyOffice"] = string.Join(' ', new[] { organization.Name, office?.Name }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())),
+                    ["displayName"] = organization.DisplayName?.Trim() ?? string.Empty,
                     ["reservationCode"] = referenceNo.Trim(),
                     ["paymentUrl"] = paymentUrl,
                     ["accountingPhone"] = FormatPhone(accountingOffice?.Phone),

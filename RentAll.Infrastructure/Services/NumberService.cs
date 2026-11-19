@@ -136,7 +136,11 @@ public class NumberService : INumberService
                 REF_ID = payForm.ReferenceId,
                 RPGUID = payForm.ReferenceGuid.ToString(),
                 EINDEX = Blank(_settings.EIndex),
-                Amounts = new InitAmounts { Amount = payForm.Amount, Surcharge = 0, TotalAmt = payForm.Amount },
+                // A save-card-only form charges nothing; staff charge the saved card later.
+                Amounts = _settings.SaveCardOnly
+                    ? new InitAmounts()
+                    : new InitAmounts { Amount = payForm.Amount, Surcharge = 0, TotalAmt = payForm.Amount },
+                WidOptions = BuildWidOptions(),
                 Payer = new InitPayer
                 {
                     Firstname = Blank(payForm.FirstName),
@@ -214,6 +218,124 @@ public class NumberService : INumberService
         };
     }
 
+    public async Task<NumberConsent?> GetConsentAsync(NumberSession session, long consentId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.ConsentDetailUrl))
+            throw new InvalidOperationException("NumberSettings:ConsentDetailUrl is not set.");
+
+        var body = await PostAsync<ConsentDetailResponse>(session, _settings.ConsentDetailUrl, new { ConsentID = consentId }, "ConsentAnnual_FullDetail", cancellationToken);
+        var result = body?.ConsentAnnual_FullDetailResult;
+        if (result != null && NumberSessionExpiredException.IsSessionError(result.ErrCode))
+            throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
+        if (result == null || !result.FunctionOk || result.ConsentAnnual == null)
+        {
+            _logger.LogError("Number ConsentAnnual_FullDetail found no consent. ConsentID={ConsentId} ErrCode={ErrCode} ErrMsg={ErrMsg}", consentId, result?.ErrCode, result?.ErrMsg);
+            return null;
+        }
+
+        var consent = result.ConsentAnnual;
+        // Number's sample spells this object "AccounttHolder"; accept either spelling.
+        var holder = result.AccounttHolder ?? result.AccountHolder;
+        return new NumberConsent
+        {
+            Id = consent.ID,
+            MerchId = consent.MerchID,
+            IsEnabled = consent.IsEnabled,
+            RpGuid = Blank(consent.RPGUID),
+            CustomerRefId = Blank(consent.CustomerRefID),
+            LastFour = LastFourDigits(consent.AcctNo) ?? LastFourDigits(holder?.AcctMask),
+            CardType = Blank(holder?.CardType),
+            ExpDate = Blank(holder?.ExpDate),
+            FirstName = Blank(consent.AcctHolderFirstName) ?? Blank(holder?.Firstname),
+            LastName = Blank(consent.AcctHolderLastName) ?? Blank(holder?.LastName)
+        };
+    }
+
+    public async Task<NumberStoredCardChargeResult> ChargeStoredCardAsync(NumberSession session, NumberStoredCardCharge charge, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(charge);
+        if (string.IsNullOrWhiteSpace(_settings.ChargeStoredCardUrl))
+            throw new InvalidOperationException("NumberSettings:ChargeStoredCardUrl is not set.");
+        if (charge.Amount <= 0)
+            throw new InvalidOperationException("Charge amount must be greater than zero.");
+
+        var request = new
+        {
+            ConsentID = charge.ConsentId,
+            Amounts = new { BaseAmt = charge.Amount, Surcharge = 0m, TotalAmt = charge.Amount },
+            purchDetails = new
+            {
+                ServiceDescrip = charge.ServiceDescription ?? string.Empty,
+                ClientRefID = charge.ClientRefId ?? string.Empty,
+                RPGUID = charge.RpGuid ?? string.Empty
+            },
+            AlternateMerchID = 0,
+            User = charge.User ?? string.Empty,
+            AuthOnly = 0
+        };
+
+        var body = await PostAsync<ChargeStoredCardResponse>(session, _settings.ChargeStoredCardUrl, request, "ChargeStoredCard", cancellationToken);
+        var result = body?.ConsentAnnual_ChargeStoredCardResult
+            ?? throw new InvalidOperationException("Number ChargeStoredCard returned an empty response.");
+        if (NumberSessionExpiredException.IsSessionError(result.ErrCode))
+            throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
+
+        _logger.LogInformation("Number ChargeStoredCard ConsentID={ConsentId} Requested={Requested} FunctionOk={FunctionOk} TxApproved={TxApproved} TxID={TxId} Approved={Approved} Authorized={Authorized} Partial={Partial} ErrCode={ErrCode} RespMsg={RespMsg}",
+            charge.ConsentId, charge.Amount, result.FunctionOk, result.TxApproved, result.TxID, result.ApprovedAmounts?.TotalAmt, result.ResponseAuthorizedAmount, result.IsPartialApproval, result.ErrCode, result.RespMsg);
+
+        return new NumberStoredCardChargeResult
+        {
+            Approved = result.FunctionOk && result.TxApproved,
+            TxId = result.TxID,
+            TxnCode = Blank(result.TxnCode),
+            Message = Blank(result.ErrMsg) ?? Blank(result.RespMsg),
+            ErrCode = result.ErrCode,
+            IsPartialApproval = result.IsPartialApproval,
+            ApprovedTotal = result.ApprovedAmounts?.TotalAmt ?? 0,
+            AuthorizedAmount = result.ResponseAuthorizedAmount,
+            AvsResult = Blank(result.AVSresult),
+            CvvResult = Blank(result.CVVresult)
+        };
+    }
+
+    private async Task<T?> PostAsync<T>(NumberSession session, string url, object requestBody, string callName, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (string.IsNullOrWhiteSpace(session.SessKey))
+            throw new InvalidOperationException("Number session key is missing.");
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient(nameof(NumberService));
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.TryAddWithoutValidation("SessKey", session.SessKey);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Content = JsonContent.Create(requestBody, options: JsonOptions);
+            using var response = await client.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "Number {Call} failed before a response.", callName);
+            throw new InvalidOperationException("Number could not be reached.", ex);
+        }
+    }
+
+    // Values from Number's PayForm builder, set in NumberSettings:WidOptions; blanks keep the sample defaults.
+    private InitWidOptions BuildWidOptions()
+    {
+        var configured = _settings.WidOptions ?? new NumberWidOptions();
+        var options = new InitWidOptions();
+        options.eVisible = Blank(configured.EVisible) ?? options.eVisible;
+        options.eReadOnly = Blank(configured.EReadOnly) ?? options.eReadOnly;
+        options.eStyles = Blank(configured.EStyles) ?? options.eStyles;
+        options.eSubmission = Blank(configured.ESubmission) ?? options.eSubmission;
+        options.eFeatures = Blank(configured.EFeatures) ?? options.eFeatures;
+        options.eColors = Blank(configured.EColors) ?? options.eColors;
+        return options;
+    }
+
     // Number's docs don't give these fields' types, so read text, numbers and booleans alike.
     private static string? JsonText(JsonElement? value)
     {
@@ -252,6 +374,12 @@ public class NumberService : INumberService
     private static string? Blank(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? LastFourDigits(string? value)
+    {
+        var digits = new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
+        return digits.Length == 0 ? null : digits.Length <= 4 ? digits : digits[^4..];
     }
 
     // Number's docs say a key lasts 24 hours. Its "SessKey Expires|..." time has no time zone, so it can't be
@@ -415,6 +543,76 @@ public class NumberService : INumberService
         public JsonElement? IsPartialApproval { get; set; }
         public JsonElement? PartialAuthApproved { get; set; }
         public JsonElement? HAuthorizedAmount { get; set; }
+    }
+
+    private sealed class ConsentDetailResponse
+    {
+        public ConsentDetailResult? ConsentAnnual_FullDetailResult { get; set; }
+    }
+
+    private sealed class ConsentDetailResult
+    {
+        public int ErrCode { get; set; }
+        public string? ErrMsg { get; set; }
+        public bool FunctionOk { get; set; }
+        public string? RespMsg { get; set; }
+        public ConsentAccountHolder? AccounttHolder { get; set; }
+        public ConsentAccountHolder? AccountHolder { get; set; }
+        public ConsentAnnualBody? ConsentAnnual { get; set; }
+    }
+
+    private sealed class ConsentAccountHolder
+    {
+        public string? AcctMask { get; set; }
+        public string? CardType { get; set; }
+        public string? ExpDate { get; set; }
+        public string? Firstname { get; set; }
+        public string? LastName { get; set; }
+    }
+
+    private sealed class ConsentAnnualBody
+    {
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long ID { get; set; }
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public int MerchID { get; set; }
+        public bool IsEnabled { get; set; }
+        public string? RPGUID { get; set; }
+        public string? CustomerRefID { get; set; }
+        public string? AcctNo { get; set; }
+        public string? AcctHolderFirstName { get; set; }
+        public string? AcctHolderLastName { get; set; }
+    }
+
+    private sealed class ChargeStoredCardResponse
+    {
+        public ChargeStoredCardResult? ConsentAnnual_ChargeStoredCardResult { get; set; }
+    }
+
+    private sealed class ChargeStoredCardResult
+    {
+        public int ErrCode { get; set; }
+        public string? ErrMsg { get; set; }
+        public bool FunctionOk { get; set; }
+        public string? RespMsg { get; set; }
+        public bool TxApproved { get; set; }
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long TxID { get; set; }
+        public string? TxnCode { get; set; }
+        public string? AVSresult { get; set; }
+        public string? CVVresult { get; set; }
+        public bool IsPartialApproval { get; set; }
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public decimal ResponseAuthorizedAmount { get; set; }
+        public ChargeApprovedAmounts? ApprovedAmounts { get; set; }
+    }
+
+    private sealed class ChargeApprovedAmounts
+    {
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public decimal BaseAmt { get; set; }
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public decimal TotalAmt { get; set; }
     }
 
     private sealed class InitFormResponse

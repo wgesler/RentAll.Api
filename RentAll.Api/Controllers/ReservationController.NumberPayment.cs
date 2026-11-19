@@ -15,9 +15,9 @@ public partial class ReservationController
     };
 
     /// <summary>
-    /// Number's PayForm PostURL. Number posts the payment result here after the payer submits the form.
-    /// The post carries no credentials, so the transaction is confirmed with Number's
-    /// Transaction_FullDetail query before anything is trusted.
+    /// Number's PayForm PostURL. Number posts here after the payer submits the form: a save-card form
+    /// sends a ConsentID with no transaction; a payment form sends a TransactionID (and a ConsentID if it
+    /// also saved the card). The post carries no credentials, so each ID is confirmed with Number first.
     /// </summary>
     [AllowAnonymous]
     [HttpPost("external/number-payment")]
@@ -37,7 +37,7 @@ public partial class ReservationController
             // Not JSON: the form may be set to the encrypted or query-string post instead.
         }
 
-        if (post == null || post.TransactionID <= 0)
+        if (post == null || (post.TransactionID <= 0 && post.ConsentID <= 0))
         {
             _logger.LogError("[NumberPayment] Step=Unreadable ContentType={ContentType} Length={Length} Query={Query}",
                 Request.ContentType, raw.Length, Request.QueryString.Value);
@@ -48,7 +48,10 @@ public partial class ReservationController
             post.TransactionID, post.ConsentID, post.RPGUID, post.REFID, post.Amount, post.ApprovalCode);
 
         if (!Guid.TryParse(post.RPGUID, out var reservationId))
+        {
+            _logger.LogError("[NumberPayment] Step=NoReservationId TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid}", post.TransactionID, post.ConsentID, post.RPGUID);
             return BadRequest("RPGUID is not a reservation id");
+        }
 
         int? officeId = null;
         try
@@ -57,7 +60,7 @@ public partial class ReservationController
             var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId);
             if (reservation == null)
             {
-                _logger.LogError("[NumberPayment] Step=ReservationNotFound TxID={TxId} RPGUID={RpGuid}", post.TransactionID, post.RPGUID);
+                _logger.LogError("[NumberPayment] Step=ReservationNotFound TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid}", post.TransactionID, post.ConsentID, post.RPGUID);
                 return NotFound("Reservation not found");
             }
 
@@ -66,61 +69,9 @@ public partial class ReservationController
             if (organization == null)
                 return NotFound("Organization not found");
 
-            var transaction = await WithNumberSessionAsync(organization, reservation.OfficeId,
-                session => _numberService.GetTransactionAsync(session, post.TransactionID, HttpContext.RequestAborted), HttpContext.RequestAborted);
-            if (transaction == null)
-            {
-                _logger.LogError("[NumberPayment] Step=NotVerified TxID={TxId} Reason=NotFoundAtNumber", post.TransactionID);
-                return BadRequest("Transaction could not be verified");
-            }
-
-            // Log every result field Number gives us: its docs don't define the status, flag or
-            // partial-approval values, so these logs are how we learn what each test case returns.
-            _logger.LogInformation("[NumberPayment] Step=Detail TxID={TxId} Status={Status} TxType={TxType} Flags={Flags} Amount={Amount} IsPartialApproval={IsPartialApproval} PartialAuthApproved={PartialAuthApproved} HAuthorizedAmount={HAuthorizedAmount} AVS={Avs} CVV={Cvv} TxnCode={TxnCode} ConsentID={ConsentId} CreatedOn={CreatedOn} PostedAmount={PostedAmount}",
-                transaction.Id, transaction.Status, transaction.TxType, transaction.Flags, transaction.Amount, transaction.IsPartialApproval, transaction.PartialAuthApproved, transaction.HAuthorizedAmount,
-                transaction.AvsResult, transaction.CvvResult, transaction.TxnCode, transaction.ConsentId, transaction.CreatedOn, post.Amount);
-
-            var guidMatches = Guid.TryParse(transaction.RpGuid, out var txGuid) && txGuid == reservationId;
-            var approvedAmount = ResolveApprovedAmount(transaction);
-            // On a partial approval the post may carry either the requested or the approved amount.
-            var amountMatches = post.Amount == transaction.Amount || (approvedAmount.HasValue && post.Amount == approvedAmount.Value);
-            if (!guidMatches || !amountMatches)
-            {
-                _logger.LogError("[NumberPayment] Step=NotVerified TxID={TxId} GuidMatches={GuidMatches} AmountMatches={AmountMatches} NumberAmount={NumberAmount} ApprovedAmount={ApprovedAmount} PostedAmount={PostedAmount}",
-                    post.TransactionID, guidMatches, amountMatches, transaction.Amount, approvedAmount, post.Amount);
-                return BadRequest("Transaction does not match the payment post");
-            }
-
-            // A decline is a real answer from Number, not an error: return 200 so it isn't posted again.
-            if (!IsApprovedStatus(transaction.Status))
-            {
-                _logger.LogError("[NumberPayment] Step=NotApproved TxID={TxId} ReservationId={ReservationId} Status={Status} Flags={Flags} Amount={Amount}",
-                    transaction.Id, reservationId, transaction.Status, transaction.Flags, transaction.Amount);
-                return Ok();
-            }
-
-            if (approvedAmount is not > 0)
-            {
-                _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} ReservationId={ReservationId} Reason=ApprovedAmountUnclear Amount={Amount} IsPartialApproval={IsPartialApproval} PartialAuthApproved={PartialAuthApproved} HAuthorizedAmount={HAuthorizedAmount}",
-                    transaction.Id, reservationId, transaction.Amount, transaction.IsPartialApproval, transaction.PartialAuthApproved, transaction.HAuthorizedAmount);
-                return Ok();
-            }
-
-            if (transaction.IsPartialApproval)
-                _logger.LogError("[NumberPayment] Step=PartialApproval TxID={TxId} ReservationId={ReservationId} Requested={Requested} Approved={Approved} Remaining={Remaining}",
-                    transaction.Id, reservationId, transaction.Amount, approvedAmount, transaction.Amount - approvedAmount.Value);
-
-            _logger.LogInformation("[NumberPayment] Step=Verified TxID={TxId} ReservationId={ReservationId} Amount={Amount} ConsentID={ConsentId}",
-                transaction.Id, reservationId, approvedAmount, transaction.ConsentId);
-
-            await SaveNumberConsentAsync(reservation, transaction, post);
-            await SaveNumberCardOnFileAsync(reservation, transaction, post);
-
-            var payment = await RecordNumberPaymentAsync(reservation, transaction, post, approvedAmount.Value);
-            if (payment != null)
-                _logger.LogInformation("[NumberPayment] Step=Recorded TxID={TxId} PaymentId={PaymentId} PaymentCode={PaymentCode}", transaction.Id, payment.PaymentId, payment.PaymentCode);
-
-            return Ok();
+            return post.TransactionID > 0
+                ? await ReceiveNumberTransactionAsync(organization, reservation, post)
+                : await ReceiveNumberConsentAsync(organization, reservation, post);
         }
         catch (InvalidOperationException ex)
         {
@@ -134,19 +85,130 @@ public partial class ReservationController
         }
     }
 
-    /// <summary>
-    /// Applies a verified Number card payment to the reservation's unpaid invoices, oldest first,
-    /// the same way the invoice list's Apply Payment does. Returns null when it was already recorded
-    /// or can't be applied; either way Number gets a 200 so it doesn't post again.
-    /// </summary>
-    private async Task<Payment?> RecordNumberPaymentAsync(Reservation reservation, NumberTransaction transaction, NumberPostDto post, decimal approvedAmount)
+    /// <summary>Save-card form: no charge, just a saved card to keep on the reservation and its contact.</summary>
+    private async Task<IActionResult> ReceiveNumberConsentAsync(Organization organization, Reservation reservation, NumberPostDto post)
     {
-        if (transaction.Id > int.MaxValue)
+        var consent = await WithNumberSessionAsync(organization, reservation.OfficeId,
+            session => _numberService.GetConsentAsync(session, post.ConsentID, HttpContext.RequestAborted), HttpContext.RequestAborted);
+        if (consent == null)
         {
-            _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} Reason=TxIdTooLarge", transaction.Id);
+            _logger.LogError("[NumberPayment] Step=NotVerified ConsentID={ConsentId} Reason=ConsentNotFoundAtNumber", post.ConsentID);
+            return BadRequest("Saved card could not be verified");
+        }
+
+        _logger.LogInformation("[NumberPayment] Step=ConsentDetail ConsentID={ConsentId} IsEnabled={IsEnabled} RPGUID={RpGuid} CustomerRefID={CustomerRefId} CardType={CardType} LastFour={LastFour} Exp={Exp}",
+            consent.Id, consent.IsEnabled, consent.RpGuid, consent.CustomerRefId, consent.CardType, consent.LastFour, consent.ExpDate);
+
+        // Number's sample consent has a blank RPGUID, so a blank one is accepted; a different one is not.
+        if (!string.IsNullOrWhiteSpace(consent.RpGuid)
+            && !(Guid.TryParse(consent.RpGuid, out var consentGuid) && consentGuid == reservation.ReservationId))
+        {
+            _logger.LogError("[NumberPayment] Step=NotVerified ConsentID={ConsentId} Reason=ReservationMismatch ConsentRPGUID={ConsentRpGuid} ReservationId={ReservationId}",
+                consent.Id, consent.RpGuid, reservation.ReservationId);
+            return BadRequest("Saved card does not match the reservation");
+        }
+        if (!consent.IsEnabled)
+        {
+            _logger.LogError("[NumberPayment] Step=ConsentDisabled ConsentID={ConsentId} ReservationId={ReservationId}", consent.Id, reservation.ReservationId);
+            return Ok();
+        }
+
+        await SaveNumberConsentAsync(reservation, consent.Id);
+        await SaveNumberCardOnFileAsync(reservation, consent.Id, new NumberCardDetails(
+            consent.CardType ?? post.CardType,
+            consent.LastFour ?? post.CardNumber,
+            consent.ExpDate ?? post.ExpireDate,
+            consent.FirstName ?? post.CardholderFirstName ?? post.CustomerFirstName,
+            consent.LastName ?? post.CardholderLastName ?? post.CustomerLastName));
+        return Ok();
+    }
+
+    /// <summary>Payment form: verify the transaction, keep any saved card, and record the payment.</summary>
+    private async Task<IActionResult> ReceiveNumberTransactionAsync(Organization organization, Reservation reservation, NumberPostDto post)
+    {
+        var reservationId = reservation.ReservationId;
+        var transaction = await WithNumberSessionAsync(organization, reservation.OfficeId,
+            session => _numberService.GetTransactionAsync(session, post.TransactionID, HttpContext.RequestAborted), HttpContext.RequestAborted);
+        if (transaction == null)
+        {
+            _logger.LogError("[NumberPayment] Step=NotVerified TxID={TxId} Reason=NotFoundAtNumber", post.TransactionID);
+            return BadRequest("Transaction could not be verified");
+        }
+
+        // Log every result field Number gives us: its docs don't define the status, flag or
+        // partial-approval values, so these logs are how we learn what each test case returns.
+        _logger.LogInformation("[NumberPayment] Step=Detail TxID={TxId} Status={Status} TxType={TxType} Flags={Flags} Amount={Amount} IsPartialApproval={IsPartialApproval} PartialAuthApproved={PartialAuthApproved} HAuthorizedAmount={HAuthorizedAmount} AVS={Avs} CVV={Cvv} TxnCode={TxnCode} ConsentID={ConsentId} CreatedOn={CreatedOn} PostedAmount={PostedAmount}",
+            transaction.Id, transaction.Status, transaction.TxType, transaction.Flags, transaction.Amount, transaction.IsPartialApproval, transaction.PartialAuthApproved, transaction.HAuthorizedAmount,
+            transaction.AvsResult, transaction.CvvResult, transaction.TxnCode, transaction.ConsentId, transaction.CreatedOn, post.Amount);
+
+        var guidMatches = Guid.TryParse(transaction.RpGuid, out var txGuid) && txGuid == reservationId;
+        var approvedAmount = ResolveApprovedAmount(transaction);
+        // On a partial approval the post may carry either the requested or the approved amount.
+        var amountMatches = post.Amount == transaction.Amount || (approvedAmount.HasValue && post.Amount == approvedAmount.Value);
+        if (!guidMatches || !amountMatches)
+        {
+            _logger.LogError("[NumberPayment] Step=NotVerified TxID={TxId} GuidMatches={GuidMatches} AmountMatches={AmountMatches} NumberAmount={NumberAmount} ApprovedAmount={ApprovedAmount} PostedAmount={PostedAmount}",
+                post.TransactionID, guidMatches, amountMatches, transaction.Amount, approvedAmount, post.Amount);
+            return BadRequest("Transaction does not match the payment post");
+        }
+
+        // A decline is a real answer from Number, not an error: return 200 so it isn't posted again.
+        if (!IsApprovedStatus(transaction.Status))
+        {
+            _logger.LogError("[NumberPayment] Step=NotApproved TxID={TxId} ReservationId={ReservationId} Status={Status} Flags={Flags} Amount={Amount}",
+                transaction.Id, reservationId, transaction.Status, transaction.Flags, transaction.Amount);
+            return Ok();
+        }
+
+        var consentId = transaction.ConsentId > 0 ? transaction.ConsentId : post.ConsentID;
+        if (consentId > 0)
+        {
+            await SaveNumberConsentAsync(reservation, consentId);
+            await SaveNumberCardOnFileAsync(reservation, consentId, new NumberCardDetails(
+                post.CardType, post.CardNumber, post.ExpireDate,
+                post.CardholderFirstName ?? post.CustomerFirstName, post.CardholderLastName ?? post.CustomerLastName));
+        }
+
+        if (approvedAmount is not > 0)
+        {
+            _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} ReservationId={ReservationId} Reason=ApprovedAmountUnclear Amount={Amount} IsPartialApproval={IsPartialApproval} PartialAuthApproved={PartialAuthApproved} HAuthorizedAmount={HAuthorizedAmount}",
+                transaction.Id, reservationId, transaction.Amount, transaction.IsPartialApproval, transaction.PartialAuthApproved, transaction.HAuthorizedAmount);
+            return Ok();
+        }
+
+        if (transaction.IsPartialApproval)
+            _logger.LogError("[NumberPayment] Step=PartialApproval TxID={TxId} ReservationId={ReservationId} Requested={Requested} Approved={Approved} Remaining={Remaining}",
+                transaction.Id, reservationId, transaction.Amount, approvedAmount, transaction.Amount - approvedAmount.Value);
+
+        var cardLabel = string.IsNullOrWhiteSpace(post.CardNumber) ? null : $"{post.CardType} ending {post.CardNumber}".Trim();
+        var payment = await RecordNumberPaymentAsync(reservation, new NumberPaymentToRecord(
+            transaction.Id, approvedAmount.Value, transaction.Amount, transaction.IsPartialApproval,
+            cardLabel, transaction.TxnCode ?? post.ApprovalCode, "Number card payment", SystemUserId));
+        if (payment != null)
+            _logger.LogInformation("[NumberPayment] Step=Recorded TxID={TxId} PaymentId={PaymentId} PaymentCode={PaymentCode}", transaction.Id, payment.PaymentId, payment.PaymentCode);
+
+        return Ok();
+    }
+
+    private sealed record NumberPaymentToRecord(
+        long TxId, decimal ApprovedAmount, decimal RequestedAmount, bool IsPartialApproval,
+        string? CardLabel, string? TxnCode, string DescriptionPrefix, Guid CreatedBy);
+
+    private sealed record NumberCardDetails(string? CardType, string? CardNumber, string? ExpireDate, string? FirstName, string? LastName);
+
+    /// <summary>
+    /// Applies an approved Number card payment to the reservation's unpaid invoices, oldest first,
+    /// the same way the invoice list's Apply Payment does. Returns null when it was already recorded
+    /// or can't be applied.
+    /// </summary>
+    private async Task<Payment?> RecordNumberPaymentAsync(Reservation reservation, NumberPaymentToRecord toRecord)
+    {
+        if (toRecord.TxId > int.MaxValue)
+        {
+            _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} Reason=TxIdTooLarge", toRecord.TxId);
             return null;
         }
-        var numberTxId = (int)transaction.Id;
+        var numberTxId = (int)toRecord.TxId;
         var officeAccess = reservation.OfficeId.ToString();
 
         // Number can post the same result more than once.
@@ -165,41 +227,46 @@ public partial class ReservationController
             return null;
         }
 
-        var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-        {
-            OrganizationId = reservation.OrganizationId,
-            OfficeIds = officeAccess,
-            ReservationId = reservation.ReservationId,
-            IsActive = true,
-            IncludeInactive = false,
-            IncludePaid = false
-        });
-        var invoiceIds = invoices.Select(invoice => invoice.InvoiceId).ToList();
+        var invoiceIds = await GetUnpaidInvoiceIdsAsync(reservation);
         if (invoiceIds.Count == 0)
         {
-            _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} ReservationId={ReservationId} Amount={Amount} Reason=NoUnpaidInvoices", numberTxId, reservation.ReservationId, approvedAmount);
+            _logger.LogError("[NumberPayment] Step=NotRecorded TxID={TxId} ReservationId={ReservationId} Amount={Amount} Reason=NoUnpaidInvoices", numberTxId, reservation.ReservationId, toRecord.ApprovedAmount);
             return null;
         }
 
-        var last4 = string.IsNullOrWhiteSpace(post.CardNumber) ? string.Empty : $" {post.CardType} ending {post.CardNumber}".TrimEnd();
-        var partialNote = transaction.IsPartialApproval ? $", partial approval of {transaction.Amount:0.00} requested" : string.Empty;
+        var cardText = string.IsNullOrWhiteSpace(toRecord.CardLabel) ? string.Empty : $" {toRecord.CardLabel}";
+        var partialNote = toRecord.IsPartialApproval ? $", partial approval of {toRecord.RequestedAmount:0.00} requested" : string.Empty;
         var payment = new Payment
         {
             OrganizationId = reservation.OrganizationId,
             OfficeId = reservation.OfficeId,
             PaymentDate = DateOnly.FromDateTime(DateTime.Today),
-            Amount = approvedAmount,
+            Amount = toRecord.ApprovedAmount,
             CostCodeId = costCode.CostCodeId,
-            Description = $"Number card payment{last4} (TxID {numberTxId}{partialNote})",
+            Description = $"{toRecord.DescriptionPrefix}{cardText} (TxID {numberTxId}{partialNote})",
             PaymentKindId = (int)PaymentKind.Invoice,
             PaymentTypeId = (int)PaymentType.CreditCard,
             NumberTxId = numberTxId,
-            NumberTxnCode = transaction.TxnCode ?? post.ApprovalCode,
+            NumberTxnCode = toRecord.TxnCode,
             IsActive = true,
-            CreatedBy = SystemUserId
+            CreatedBy = toRecord.CreatedBy
         };
 
-        return await _accountingManager.ApplyInvoicePaymentAsync(payment, invoiceIds, null, officeAccess, SystemUserId);
+        return await _accountingManager.ApplyInvoicePaymentAsync(payment, invoiceIds, null, officeAccess, toRecord.CreatedBy);
+    }
+
+    private async Task<List<Guid>> GetUnpaidInvoiceIdsAsync(Reservation reservation)
+    {
+        var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = reservation.OrganizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
+            ReservationId = reservation.ReservationId,
+            IsActive = true,
+            IncludeInactive = false,
+            IncludePaid = false
+        });
+        return invoices.Select(invoice => invoice.InvoiceId).ToList();
     }
 
     // Number's docs only show FAILED for a decline; the other words cover voids and reversals.
@@ -230,14 +297,13 @@ public partial class ReservationController
     }
 
     // A ConsentID means Number kept the card on file; store it so later charges can use it.
-    private async Task SaveNumberConsentAsync(Reservation reservation, NumberTransaction transaction, NumberPostDto post)
+    private async Task SaveNumberConsentAsync(Reservation reservation, long consentId)
     {
-        var consentId = transaction.ConsentId > 0 ? transaction.ConsentId : post.ConsentID;
         if (consentId <= 0)
             return;
         if (consentId > int.MaxValue)
         {
-            _logger.LogError("[NumberPayment] Step=ConsentNotSaved TxID={TxId} ConsentID={ConsentId} Reason=ConsentIdTooLarge", transaction.Id, consentId);
+            _logger.LogError("[NumberPayment] Step=ConsentNotSaved ConsentID={ConsentId} Reason=ConsentIdTooLarge", consentId);
             return;
         }
         if (reservation.NumberConsentId == (int)consentId)
@@ -248,12 +314,12 @@ public partial class ReservationController
             reservation.NumberConsentId = (int)consentId;
             reservation.ModifiedBy = SystemUserId;
             await _reservationRepository.UpdateByIdAsync(reservation);
-            _logger.LogInformation("[NumberPayment] Step=ConsentSaved TxID={TxId} ReservationId={ReservationId} ConsentID={ConsentId}", transaction.Id, reservation.ReservationId, consentId);
+            _logger.LogInformation("[NumberPayment] Step=ConsentSaved ReservationId={ReservationId} ConsentID={ConsentId}", reservation.ReservationId, consentId);
         }
         catch (Exception ex)
         {
-            // The payment still gets recorded; the card on file can be set again later.
-            _logger.LogError(ex, "[NumberPayment] Step=ConsentNotSaved TxID={TxId} ReservationId={ReservationId} ConsentID={ConsentId}", transaction.Id, reservation.ReservationId, consentId);
+            // The rest still runs; the card on file can be set again later.
+            _logger.LogError(ex, "[NumberPayment] Step=ConsentNotSaved ReservationId={ReservationId} ConsentID={ConsentId}", reservation.ReservationId, consentId);
         }
     }
 
@@ -261,9 +327,8 @@ public partial class ReservationController
     /// Saves the card Number kept on file as the card on file of the reservation's first contact (the payer
     /// on the payment form). Only Number's token, last four, type, name and expiration are stored.
     /// </summary>
-    private async Task SaveNumberCardOnFileAsync(Reservation reservation, NumberTransaction transaction, NumberPostDto post)
+    private async Task SaveNumberCardOnFileAsync(Reservation reservation, long consentId, NumberCardDetails card)
     {
-        var consentId = transaction.ConsentId > 0 ? transaction.ConsentId : post.ConsentID;
         if (consentId <= 0 || consentId > int.MaxValue)
             return;
 
@@ -273,51 +338,50 @@ public partial class ReservationController
             var contact = contactId == Guid.Empty ? null : await _contactRepository.GetContactByIdAsync(contactId);
             if (contact == null || contact.OrganizationId != reservation.OrganizationId)
             {
-                _logger.LogError("[NumberPayment] Step=CardNotSaved TxID={TxId} ReservationId={ReservationId} Reason=NoContact", transaction.Id, reservation.ReservationId);
+                _logger.LogError("[NumberPayment] Step=CardNotSaved ConsentID={ConsentId} ReservationId={ReservationId} Reason=NoContact", consentId, reservation.ReservationId);
                 return;
             }
 
-            var cardTypeId = MapNumberCardType(post.CardType);
+            var cardTypeId = MapNumberCardType(card.CardType);
             if (cardTypeId == null)
-                _logger.LogWarning("[NumberPayment] Step=CardTypeUnknown TxID={TxId} CardType={CardType}; saved as Visa", transaction.Id, post.CardType);
+                _logger.LogWarning("[NumberPayment] Step=CardTypeUnknown ConsentID={ConsentId} CardType={CardType}; saved as Visa", consentId, card.CardType);
 
-            var name = string.Join(' ', new[] { post.CardholderFirstName, post.CardholderLastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
-            if (string.IsNullOrWhiteSpace(name))
-                name = string.Join(' ', new[] { post.CustomerFirstName, post.CustomerLastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+            var name = string.Join(' ', new[] { card.FirstName, card.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
 
             var saved = await _contactCardStore.SaveNumberCardAsync(contact, new ContactCard
             {
                 CardTypeId = cardTypeId ?? (int)CardType.Visa,
                 CardName = name,
-                LastFour = ContactCardStore.ExtractLastFour(post.CardNumber),
-                ExpirationDate = NormalizeExpiration(post.ExpireDate),
+                LastFour = ContactCardStore.ExtractLastFour(card.CardNumber),
+                ExpirationDate = NormalizeExpiration(card.ExpireDate),
                 NumberConsentId = (int)consentId
             }, SystemUserId);
 
-            _logger.LogInformation("[NumberPayment] Step=CardSaved TxID={TxId} ContactId={ContactId} ContactCardId={ContactCardId} ConsentID={ConsentId}",
-                transaction.Id, contact.ContactId, saved.ContactCardId, consentId);
+            _logger.LogInformation("[NumberPayment] Step=CardSaved ConsentID={ConsentId} ContactId={ContactId} ContactCardId={ContactCardId}",
+                consentId, contact.ContactId, saved.ContactCardId);
         }
         catch (Exception ex)
         {
-            // The payment still gets recorded; the card can be saved again on the next payment.
-            _logger.LogError(ex, "[NumberPayment] Step=CardNotSaved TxID={TxId} ReservationId={ReservationId}", transaction.Id, reservation.ReservationId);
+            // The token is still on the reservation; the card can be saved again later.
+            _logger.LogError(ex, "[NumberPayment] Step=CardNotSaved ConsentID={ConsentId} ReservationId={ReservationId}", consentId, reservation.ReservationId);
         }
     }
 
+    // Number uses both names (Visa) and codes (VI, MC, DS, AX) depending on the call.
     private static int? MapNumberCardType(string? cardType)
     {
         var value = new string((cardType ?? string.Empty).Where(char.IsLetter).ToArray()).ToUpperInvariant();
         return value switch
         {
-            "VISA" => (int)CardType.Visa,
+            "VISA" or "VI" => (int)CardType.Visa,
             "MC" or "MASTERCARD" or "MASTER" => (int)CardType.MasterCard,
-            "DISC" or "DISCOVER" => (int)CardType.Discover,
-            "AMEX" or "AMERICANEXPRESS" or "AX" => (int)CardType.AmericanExpress,
+            "DS" or "DI" or "DISC" or "DISCOVER" => (int)CardType.Discover,
+            "AMEX" or "AMERICANEXPRESS" or "AX" or "AE" => (int)CardType.AmericanExpress,
             _ => null
         };
     }
 
-    // Number posts "12/28"; its transaction detail shows "1228". Store MM/YY.
+    // Number posts "12/28"; its detail queries show "1228". Store MM/YY.
     private static string? NormalizeExpiration(string? expireDate)
     {
         var digits = new string((expireDate ?? string.Empty).Where(char.IsDigit).ToArray());

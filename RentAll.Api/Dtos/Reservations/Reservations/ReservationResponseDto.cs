@@ -86,6 +86,8 @@ public class ReservationResponseDto
     public DateOnly? dInspectingDate { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
+    /// <summary>Number saved a card for this reservation (the token itself is not sent).</summary>
+    public bool HasNumberCardOnFile { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -173,6 +175,7 @@ public class ReservationResponseDto
         dInspectorUserId = reservation.dInspectorUserId;
         dInspectingDate = reservation.dInspectingDate;
         CurrentInvoiceNo = reservation.CurrentInvoiceNo;
+        HasNumberCardOnFile = reservation.NumberConsentId is > 0;
         IsActive = reservation.IsActive;
         CreatedOn = reservation.CreatedOn;
         CreatedBy = reservation.CreatedBy;

@@ -27,6 +27,7 @@ namespace RentAll.Api.Controllers
         private readonly INumberService _numberService;
         private readonly ContactCardStore _contactCardStore;
         private readonly IEmailManager _emailManager;
+        private readonly IEmailRepository _emailRepository;
         private readonly SendGridSettings _sendGridSettings;
         private readonly StorageSettings _storageSettings;
         private readonly ILogger<ReservationController> _logger;
@@ -45,6 +46,7 @@ namespace RentAll.Api.Controllers
             INumberService numberService,
             ContactCardStore contactCardStore,
             IEmailManager emailManager,
+            IEmailRepository emailRepository,
             IOptions<SendGridSettings> sendGridSettings,
             IOptions<StorageSettings> storageSettings,
             ILogger<ReservationController> logger)
@@ -62,6 +64,7 @@ namespace RentAll.Api.Controllers
             _numberService = numberService;
             _contactCardStore = contactCardStore;
             _emailManager = emailManager;
+            _emailRepository = emailRepository;
             _sendGridSettings = sendGridSettings?.Value ?? throw new ArgumentNullException(nameof(sendGridSettings));
             _storageSettings = storageSettings?.Value ?? throw new ArgumentNullException(nameof(storageSettings));
             _logger = logger;

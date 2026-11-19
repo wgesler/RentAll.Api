@@ -20,6 +20,15 @@ public interface IEmailRepository
     Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId, int? officeId = null);
     #endregion
 
+    #region EmailTemplate
+    Task<EmailTemplate?> GetEmailTemplateByNameAsync(Guid organizationId, int? officeId, string emailName);
+    Task<EmailTemplate?> GetEmailTemplateByIdAsync(int emailTemplateId, Guid organizationId);
+    Task<IEnumerable<EmailTemplate>> GetEmailTemplatesByOrganizationIdAsync(Guid organizationId);
+    Task<EmailTemplate> CreateEmailTemplateAsync(EmailTemplate emailTemplate);
+    Task<EmailTemplate> UpdateEmailTemplateByIdAsync(EmailTemplate emailTemplate);
+    Task DeleteEmailTemplateByIdAsync(int emailTemplateId, Guid organizationId);
+    #endregion
+
     #region Alerts
     Task<IEnumerable<Alert>> GetAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Alert>> GetAlertsAsync(AlertGetCriteria criteria);
