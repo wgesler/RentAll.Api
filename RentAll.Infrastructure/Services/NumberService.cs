@@ -109,6 +109,11 @@ public class NumberService : INumberService
             _logger.LogError("[NumberPayFormTrace] Step=InitFormEmptyResponse Body={Body}", requestJson);
             throw new InvalidOperationException("Number PayForm Init returned an empty response.");
         }
+        if (NumberSessionExpiredException.IsSessionError(result.ErrCode))
+        {
+            _logger.LogError("[NumberPayFormTrace] Step=InitFormSessionRejected ErrCode={ErrCode} ErrMsg={ErrMsg}", result.ErrCode, result.ErrMsg);
+            throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
+        }
         if (!result.FunctionOk || string.IsNullOrWhiteSpace(result.PaymentUrl))
         {
             _logger.LogError("[NumberPayFormTrace] Step=InitFormRejected FunctionOk={FunctionOk} ErrCode={ErrCode} ErrMsg={ErrMsg} RespMsg={RespMsg} Body={Body}", result.FunctionOk, result.ErrCode, result.ErrMsg, result.RespMsg, requestJson);
@@ -126,8 +131,8 @@ public class NumberService : INumberService
             InitParams = new InitParamsBody
             {
                 MerchID = session.MerchId,
-                PostURL = BuildPostUrl(payForm),
-                RedirectURL = Blank(_settings.RedirectUrl),
+                PostURL = Blank(_settings.PostUrl),
+                RedirectURL = Blank(payForm.RedirectUrl) ?? Blank(_settings.RedirectUrl),
                 REF_ID = payForm.ReferenceId,
                 RPGUID = payForm.ReferenceGuid.ToString(),
                 EINDEX = Blank(_settings.EIndex),
@@ -148,18 +153,6 @@ public class NumberService : INumberService
                 }
             }
         };
-    }
-
-    // Number posts the payment result here. The organization and office ride on the query
-    // so the callback can find the reservation and the office's stored Number session.
-    private string? BuildPostUrl(NumberPayForm payForm)
-    {
-        var postUrl = Blank(_settings.PostUrl);
-        if (postUrl == null || payForm.OrganizationId == Guid.Empty || payForm.OfficeId <= 0)
-            return postUrl;
-
-        var separator = postUrl.Contains('?') ? '&' : '?';
-        return $"{postUrl}{separator}organizationId={payForm.OrganizationId}&officeId={payForm.OfficeId}";
     }
 
     public async Task<NumberTransaction?> GetTransactionAsync(NumberSession session, long transactionId, CancellationToken cancellationToken = default)
@@ -189,6 +182,11 @@ public class NumberService : INumberService
         }
 
         var result = body?.Transaction_FullDetailResult;
+        if (result != null && NumberSessionExpiredException.IsSessionError(result.ErrCode))
+        {
+            _logger.LogError("Number Transaction_FullDetail rejected the session key. TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result.ErrCode, result.ErrMsg);
+            throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
+        }
         if (result == null || !result.FunctionOk || result.Transaction == null)
         {
             _logger.LogError("Number Transaction_FullDetail found no transaction. TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result?.ErrCode, result?.ErrMsg);
@@ -206,8 +204,49 @@ public class NumberService : INumberService
             ConsentId = tx.ConsentID,
             RefId = tx.REF_ID,
             RpGuid = tx.RPGUID,
-            TxnCode = tx.TXN_CODE
+            TxnCode = tx.TXN_CODE,
+            Flags = JsonText(tx.Flags),
+            AvsResult = JsonText(tx.AVSr),
+            CvvResult = JsonText(tx.CVVr),
+            IsPartialApproval = JsonBool(tx.IsPartialApproval),
+            PartialAuthApproved = JsonDecimal(tx.PartialAuthApproved),
+            HAuthorizedAmount = JsonDecimal(tx.HAuthorizedAmount)
         };
+    }
+
+    // Number's docs don't give these fields' types, so read text, numbers and booleans alike.
+    private static string? JsonText(JsonElement? value)
+    {
+        if (value is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+        var text = element.ValueKind == JsonValueKind.String ? element.GetString() : element.GetRawText();
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    }
+
+    private static bool JsonBool(JsonElement? value)
+    {
+        if (value is not { } element)
+            return false;
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.Number => element.TryGetDecimal(out var number) && number == 1,
+            JsonValueKind.String => element.GetString()?.Trim() is { } text
+                && (text.Equals("true", StringComparison.OrdinalIgnoreCase) || text == "1" || text.Equals("Y", StringComparison.OrdinalIgnoreCase)),
+            _ => false
+        };
+    }
+
+    private static decimal? JsonDecimal(JsonElement? value)
+    {
+        if (value is not { } element)
+            return null;
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out var number))
+            return number;
+        if (element.ValueKind == JsonValueKind.String
+            && decimal.TryParse(element.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+            return parsed;
+        return null;
     }
 
     private static string? Blank(string? value)
@@ -215,16 +254,23 @@ public class NumberService : INumberService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
+    // Number's docs say a key lasts 24 hours. Its "SessKey Expires|..." time has no time zone, so it can't be
+    // trusted on a server in another zone: keep whichever is sooner, that time or 23 hours from now.
     private static DateTimeOffset ReadSessionExpiry(string? respMsg)
     {
+        var latest = DateTimeOffset.UtcNow.AddHours(23);
         var value = respMsg ?? string.Empty;
         const string marker = "SessKey Expires|";
         var index = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (index >= 0)
             value = value[(index + marker.Length)..].Trim();
         if (DateTime.TryParse(value, CultureInfo.GetCultureInfo("en-US"), DateTimeStyles.AssumeLocal, out var parsed))
-            return new DateTimeOffset(DateTime.SpecifyKind(parsed, DateTimeKind.Local));
-        return DateTimeOffset.UtcNow.AddHours(24);
+        {
+            var reported = new DateTimeOffset(DateTime.SpecifyKind(parsed, DateTimeKind.Local)).AddMinutes(-30);
+            if (reported > DateTimeOffset.UtcNow && reported < latest)
+                return reported;
+        }
+        return latest;
     }
 
     private async Task<string> ReadSecretAsync(string? secretName, CancellationToken cancellationToken)
@@ -363,6 +409,12 @@ public class NumberService : INumberService
         public string? REF_ID { get; set; }
         public string? RPGUID { get; set; }
         public string? TXN_CODE { get; set; }
+        public JsonElement? Flags { get; set; }
+        public JsonElement? AVSr { get; set; }
+        public JsonElement? CVVr { get; set; }
+        public JsonElement? IsPartialApproval { get; set; }
+        public JsonElement? PartialAuthApproved { get; set; }
+        public JsonElement? HAuthorizedAmount { get; set; }
     }
 
     private sealed class InitFormResponse

@@ -360,6 +360,41 @@ public class FileService : IFileService
         return relative.StartsWith('/') ? relative : "/" + relative;
     }
 
+    public async Task<string> SavePublicOfficeLogoAsync(Guid organizationId, string? officeName, Stream content, string contentType)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        var officeFolder = StoragePathBuilder.OfficeFolderName(officeName);
+        var relativeDir = Path.Combine("public", organizationId.ToString(), officeFolder);
+        var fullDir = Path.Combine(_wwwRootPath, relativeDir);
+        Directory.CreateDirectory(fullDir);
+
+        var fullPath = Path.Combine(fullDir, "logo.png");
+        if (content.CanSeek)
+            content.Position = 0;
+
+        await using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            await content.CopyToAsync(fileStream).ConfigureAwait(false);
+
+        return "/" + relativeDir.Replace('\\', '/') + "/logo.png";
+    }
+
+    public Task DeletePublicOfficeLogoAsync(Guid organizationId, string? officeName)
+    {
+        try
+        {
+            var fullPath = Path.Combine(_wwwRootPath, "public", organizationId.ToString(), StoragePathBuilder.OfficeFolderName(officeName), "logo.png");
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting public office logo OrganizationId={OrganizationId} OfficeName={OfficeName}", organizationId, officeName);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
     {
         if (string.IsNullOrWhiteSpace(filePath))

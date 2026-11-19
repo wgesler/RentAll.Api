@@ -4,6 +4,7 @@ public class NumberPayForm
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string? RedirectUrl { get; set; }
     public string ReferenceId { get; set; } = string.Empty;
     public Guid ReferenceGuid { get; set; }
     public decimal Amount { get; set; }

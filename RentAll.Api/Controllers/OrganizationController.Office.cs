@@ -1,3 +1,4 @@
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
 {
@@ -84,6 +85,7 @@ namespace RentAll.Api.Controllers
 
                 // Create default cost codes for the office
                 await _accountingManager.CreateDefaultCostCodeAsync(createdOffice.OrganizationId, createdOffice.OfficeId);
+                await SyncPublicOfficeLogoAsync(createdOffice.OrganizationId, createdOffice.Name, createdOffice.LogoPath, dto.FileDetails);
 
                 var response = new OfficeResponseDto(createdOffice);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath, ImageType.Logos);
@@ -129,6 +131,9 @@ namespace RentAll.Api.Controllers
                     existingOffice.OrganizationId, existingOffice.Name, dto.FileDetails, ImageType.Logos, existingOffice.LogoPath, dto.LogoPath);
 
                 var updatedOffice = await _organizationRepository.UpdateByIdAsync(office);
+                if (!string.Equals(existingOffice.Name?.Trim(), updatedOffice.Name?.Trim(), StringComparison.OrdinalIgnoreCase))
+                    await _fileService.DeletePublicOfficeLogoAsync(existingOffice.OrganizationId, existingOffice.Name);
+                await SyncPublicOfficeLogoAsync(updatedOffice.OrganizationId, updatedOffice.Name, updatedOffice.LogoPath, dto.FileDetails);
                 var response = new OfficeResponseDto(updatedOffice);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath, ImageType.Logos);
                 return Ok(response);
@@ -154,6 +159,8 @@ namespace RentAll.Api.Controllers
                 var existingOffice = await _organizationRepository.GetOfficeByIdAsync(officeId, CurrentOrganizationId);
                 if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
                     await _fileService.DeleteImageAsync(existingOffice.OrganizationId, await GetOfficeNameAsync(officeId), existingOffice.LogoPath, ImageType.Logos);
+                if (existingOffice != null)
+                    await _fileService.DeletePublicOfficeLogoAsync(existingOffice.OrganizationId, existingOffice.Name);
 
                 await _organizationRepository.DeleteOfficeByIdAsync(officeId);
                 return NoContent();
@@ -165,5 +172,61 @@ namespace RentAll.Api.Controllers
             }
         }
         #endregion
+
+        private async Task SyncPublicOfficeLogoAsync(
+            Guid organizationId,
+            string? officeName,
+            string? logoPath,
+            FileDetails? uploadedFile)
+        {
+            var content = TryGetUploadedLogoBytes(uploadedFile, out var contentType);
+            if (content == null && !string.IsNullOrWhiteSpace(logoPath))
+            {
+                var stored = await _fileService.GetImageDetailsAsync(organizationId, officeName, logoPath, ImageType.Logos);
+                content = TryGetUploadedLogoBytes(stored, out contentType);
+            }
+
+            if (content == null || content.Length == 0)
+            {
+                await _fileService.DeletePublicOfficeLogoAsync(organizationId, officeName);
+                return;
+            }
+
+            await using var stream = new MemoryStream(content);
+            await _fileService.SavePublicOfficeLogoAsync(organizationId, officeName, stream, contentType);
+        }
+
+        private static byte[]? TryGetUploadedLogoBytes(FileDetails? fileDetails, out string contentType)
+        {
+            contentType = "image/png";
+            if (fileDetails == null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(fileDetails.ContentType))
+                contentType = fileDetails.ContentType.Trim();
+
+            var raw = !string.IsNullOrWhiteSpace(fileDetails.File)
+                ? fileDetails.File
+                : fileDetails.DataUrl;
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            try
+            {
+                if (raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var comma = raw.IndexOf(',');
+                    if (comma < 0 || comma == raw.Length - 1)
+                        return null;
+                    return Convert.FromBase64String(raw[(comma + 1)..]);
+                }
+
+                return Convert.FromBase64String(raw);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
     }
 }

@@ -146,6 +146,7 @@ builder.Services.AddScoped<ExternalPropertyPhotoImportProcessor>();
 builder.Services.AddScoped<ExternalPropertyPhotoSyncService>();
 builder.Services.AddScoped<ExternalPropertyUploadLogService>();
 builder.Services.AddScoped<ExternalPropertyOwnerContactResolver>();
+builder.Services.AddScoped<ContactCardStore>();
 builder.Services.AddHttpClient(nameof(DocuSignService));
 builder.Services.AddScoped<IDocuSignService, DocuSignService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();

@@ -8,7 +8,10 @@ public class ContactCardEntity
     public int CardTypeId { get; set; }
     public string CardName { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public byte[] CardNumber { get; set; } = [];
+    public byte[]? CardNumber { get; set; }
     public string LastFour { get; set; } = string.Empty;
+    public string? ExpirationDate { get; set; }
+    public int? NumberConsentId { get; set; }
+    public bool IsExternallyStored { get; set; }
     public int? ChartOfAccountId { get; set; }
 }

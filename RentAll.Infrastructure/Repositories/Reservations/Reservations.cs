@@ -160,11 +160,17 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return await LoadReservationByIdAsync(db, null, reservationId, organizationId);
         }
 
+        public async Task<Reservation?> GetReservationByIdAsync(Guid reservationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            return await LoadReservationByIdAsync(db, null, reservationId, null);
+        }
+
         private async Task<Reservation?> LoadReservationByIdAsync(
             SqlConnection db,
             IDbTransaction? transaction,
             Guid reservationId,
-            Guid organizationId)
+            Guid? organizationId)
         {
             var (headers, extraFeeLines) = await db.DapperProcQueryMultipleAsync<ReservationEntity, ExtraFeeLineEntity>("Property.Reservation_GetById", new
             {

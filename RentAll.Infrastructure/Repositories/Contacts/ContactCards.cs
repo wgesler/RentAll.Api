@@ -20,13 +20,11 @@ public partial class ContactRepository
         if (res == null || !res.Any())
             return null;
 
-        var entity = res.First();
-        var card = ConvertEntityToModel(entity);
-        card.CardNumber = Convert.ToBase64String(entity.CardNumber ?? []);
-        return card;
+        return ConvertEntityToModel(res.First());
     }
 
-    public async Task<ContactCard> CreateContactCardAsync(ContactCard contactCard, byte[] encryptedCardNumber)
+    // encryptedCardNumber is null when the card is stored at the payment processor.
+    public async Task<ContactCard> CreateContactCardAsync(ContactCard contactCard, byte[]? encryptedCardNumber)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ContactCardEntity>("Organization.ContactCard_Add", new
@@ -36,19 +34,19 @@ public partial class ContactRepository
             CardTypeId = contactCard.CardTypeId,
             CardName = contactCard.CardName,
             CardNumber = encryptedCardNumber,
-            LastFour = contactCard.LastFour
+            LastFour = contactCard.LastFour,
+            ExpirationDate = contactCard.ExpirationDate,
+            NumberConsentId = contactCard.NumberConsentId,
+            IsExternallyStored = contactCard.IsExternallyStored
         });
 
         if (res == null || !res.Any())
             throw new Exception("ContactCard not created");
 
-        var entity = res.First();
-        var card = ConvertEntityToModel(entity);
-        card.CardNumber = Convert.ToBase64String(entity.CardNumber ?? []);
-        return card;
+        return ConvertEntityToModel(res.First());
     }
 
-    public async Task<ContactCard> UpdateContactCardByIdAsync(ContactCard contactCard, byte[] encryptedCardNumber)
+    public async Task<ContactCard> UpdateContactCardByIdAsync(ContactCard contactCard, byte[]? encryptedCardNumber)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ContactCardEntity>("Organization.ContactCard_UpdateById", new
@@ -59,16 +57,16 @@ public partial class ContactRepository
             CardTypeId = contactCard.CardTypeId,
             CardName = contactCard.CardName,
             CardNumber = encryptedCardNumber,
-            LastFour = contactCard.LastFour
+            LastFour = contactCard.LastFour,
+            ExpirationDate = contactCard.ExpirationDate,
+            NumberConsentId = contactCard.NumberConsentId,
+            IsExternallyStored = contactCard.IsExternallyStored
         });
 
         if (res == null || !res.Any())
             throw new Exception("ContactCard not found");
 
-        var entity = res.First();
-        var card = ConvertEntityToModel(entity);
-        card.CardNumber = Convert.ToBase64String(entity.CardNumber ?? []);
-        return card;
+        return ConvertEntityToModel(res.First());
     }
 
     public async Task DeleteContactCardByIdAsync(int contactCardId, Guid organizationId, int officeId)
@@ -92,7 +90,12 @@ public partial class ContactRepository
             CardTypeId = e.CardTypeId,
             CardName = e.CardName,
             DisplayName = e.DisplayName,
+            // Base64 of the encrypted bytes; empty when the card is stored externally.
+            CardNumber = e.CardNumber is { Length: > 0 } ? Convert.ToBase64String(e.CardNumber) : string.Empty,
             LastFour = e.LastFour,
+            ExpirationDate = e.ExpirationDate,
+            NumberConsentId = e.NumberConsentId,
+            IsExternallyStored = e.IsExternallyStored,
             ChartOfAccountId = e.ChartOfAccountId
         };
     }

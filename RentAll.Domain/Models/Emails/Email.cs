@@ -20,6 +20,8 @@ public class Email
     public string Subject { get; set; } = string.Empty;
     public string PlainTextContent { get; set; } = string.Empty;
     public string HtmlContent { get; set; } = string.Empty;
+    public string? TemplateId { get; set; }
+    public Dictionary<string, object?> TemplateData { get; set; } = new();
     public Guid? DocumentId { get; set; }
     public string AttachmentName { get; set; } = string.Empty;
     public string AttachmentPath { get; set; } = string.Empty;
@@ -57,6 +59,8 @@ public class Email
             Subject = Subject,
             PlainTextContent = PlainTextContent,
             HtmlContent = HtmlContent,
+            TemplateId = TemplateId,
+            TemplateData = TemplateData ?? new Dictionary<string, object?>(),
             FileDetails = FileDetails,
             AdditionalFileDetails = AdditionalFileDetails?
                 .Where(file => file != null)

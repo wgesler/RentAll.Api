@@ -28,7 +28,8 @@ public partial class ContactController
             if (existing == null)
                 return NotFound("Contact card not found");
 
-            if (string.IsNullOrWhiteSpace(existing.CardNumber))
+            // Cards held by Number have no number here to decrypt.
+            if (existing.IsExternallyStored || string.IsNullOrWhiteSpace(existing.CardNumber))
                 return Ok(new ContactCardPanResponseDto(string.Empty));
 
             var cipherBytes = Convert.FromBase64String(existing.CardNumber);
@@ -229,36 +230,17 @@ public partial class ContactController
         return created.ContactCardId;
     }
 
-    private async Task<ContactCard> CreateContactCardInternalAsync(Guid organizationId, int officeId, CreateContactCardDto dto)
+    // ContactCardStore skips encryption when the office's payment integration is Number.
+    private Task<ContactCard> CreateContactCardInternalAsync(Guid organizationId, int officeId, CreateContactCardDto dto)
     {
         var model = dto.ToModel(organizationId, officeId);
-        model.LastFour = ExtractLastFour(model.CardNumber);
-        var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
-        return await _contactRepository.CreateContactCardAsync(model, encrypted);
+        return _contactCardStore.CreateAsync(model, model.CardNumber);
     }
 
-    private async Task<ContactCard> UpdateContactCardInternalAsync(Guid organizationId, int officeId, UpdateContactCardDto dto, ContactCard existing)
+    private Task<ContactCard> UpdateContactCardInternalAsync(Guid organizationId, int officeId, UpdateContactCardDto dto, ContactCard existing)
     {
         var model = dto.ToModel(organizationId, officeId);
-        byte[] encrypted;
-        if (string.IsNullOrWhiteSpace(dto.CardNumber) || dto.CardNumber.Contains('*', StringComparison.Ordinal))
-        {
-            encrypted = Convert.FromBase64String(existing.CardNumber);
-            model.LastFour = existing.LastFour;
-        }
-        else
-        {
-            model.LastFour = ExtractLastFour(model.CardNumber);
-            encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
-        }
-
-        return await _contactRepository.UpdateContactCardByIdAsync(model, encrypted);
-    }
-
-    private static string ExtractLastFour(string cardNumber)
-    {
-        var digits = new string((cardNumber ?? string.Empty).Where(char.IsDigit).ToArray());
-        return digits.Length <= 4 ? digits : digits[^4..];
+        return _contactCardStore.UpdateAsync(model, dto.CardNumber, existing);
     }
     #endregion
 }

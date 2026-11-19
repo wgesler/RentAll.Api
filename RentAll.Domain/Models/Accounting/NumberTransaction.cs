@@ -14,4 +14,12 @@ public class NumberTransaction
     public string? RefId { get; set; }
     public string? RpGuid { get; set; }
     public string? TxnCode { get; set; }
+    public string? Flags { get; set; }
+    public string? AvsResult { get; set; }
+    public string? CvvResult { get; set; }
+
+    // Number's docs name these fields but don't define them; the sample shows false / -1 / -1.
+    public bool IsPartialApproval { get; set; }
+    public decimal? PartialAuthApproved { get; set; }
+    public decimal? HAuthorizedAmount { get; set; }
 }

@@ -17,6 +17,16 @@ public interface IFileService
     Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType);
     Task<FileDetails?> GetImageDetailsAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType);
 
+    /// <summary>
+    /// Uploads the office logo to public storage at public/{organizationId}/{officeName}/logo.png.
+    /// </summary>
+    Task<string> SavePublicOfficeLogoAsync(Guid organizationId, string? officeName, Stream content, string contentType);
+
+    /// <summary>
+    /// Removes the public office logo at public/{organizationId}/{officeName}/logo.png when present.
+    /// </summary>
+    Task DeletePublicOfficeLogoAsync(Guid organizationId, string? officeName);
+
     Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, DocumentType documentType);
     Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, DocumentType documentType);
     Task<string> SavePropertyAgreementFileAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType);

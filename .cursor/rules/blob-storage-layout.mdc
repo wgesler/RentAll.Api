@@ -14,6 +14,16 @@ Every stored file, in Azure blobs and in local file storage, uses this path and 
 
 Pictures use the second form. `propertyCode` is required for listings, inspection photos, and any other property picture. Receipt images use that same extra segment for the receipt number, and receipt drafts use the draft code. Each receipt has its own folder.
 
+## Public office logos (exception)
+
+The `public` blob container is for anonymously readable assets used outside private storage (e.g. email templates). Office logos sync there on office save as:
+
+```text
+public/{organizationId}/{officeName}/logo.png
+```
+
+`officeName` uses the same `OfficeFolderName` rule as private storage (lowercase; blank → `global`). Do not put other private files in `public`.
+
 ## Hard rule
 
 **Nothing is ever stored at the root of an org.** The first child under `{orgId}` is always an office name. Do not put a file, a category, or a property folder directly under the org.

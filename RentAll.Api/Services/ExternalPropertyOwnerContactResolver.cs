@@ -13,19 +13,22 @@ public class ExternalPropertyOwnerContactResolver
     private readonly IEncryptionService _encryptionService;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly ExternalPropertyPhotoUrlImporter _urlImporter;
+    private readonly ContactCardStore _contactCardStore;
 
     public ExternalPropertyOwnerContactResolver(
         IContactRepository contactRepository,
         IContactManager contactManager,
         IEncryptionService encryptionService,
         IOrganizationRepository organizationRepository,
-        ExternalPropertyPhotoUrlImporter urlImporter)
+        ExternalPropertyPhotoUrlImporter urlImporter,
+        ContactCardStore contactCardStore)
     {
         _contactRepository = contactRepository;
         _contactManager = contactManager;
         _encryptionService = encryptionService;
         _organizationRepository = organizationRepository;
         _urlImporter = urlImporter;
+        _contactCardStore = contactCardStore;
     }
 
     public async Task<(bool Success, Guid? Owner1Id, Guid? Owner2Id, Guid? Owner3Id, Guid? PropertyVendorContactId, string? ErrorMessage)> ResolveContactsAsync(CreateExternalPropertyDto dto, ExternalPropertyIntakeContext context, Guid currentUser)
@@ -202,19 +205,7 @@ public class ExternalPropertyOwnerContactResolver
                     CardNumber = card.CardNumber
                 };
                 var model = updateDto.ToModel(contact.OrganizationId, contact.OfficeId);
-                byte[] encrypted;
-                if (string.IsNullOrWhiteSpace(card.CardNumber) || card.CardNumber.Contains('*', StringComparison.Ordinal))
-                {
-                    encrypted = Convert.FromBase64String(existing.CardNumber);
-                    model.LastFour = existing.LastFour;
-                }
-                else
-                {
-                    model.LastFour = ExtractLastFour(card.CardNumber);
-                    encrypted = await _encryptionService.EncryptAsync(card.CardNumber);
-                }
-
-                var updated = await _contactRepository.UpdateContactCardByIdAsync(model, encrypted);
+                var updated = await _contactCardStore.UpdateAsync(model, card.CardNumber, existing);
                 cardId = updated.ContactCardId;
             }
         }
@@ -235,9 +226,7 @@ public class ExternalPropertyOwnerContactResolver
     {
         var createDto = new CreateContactCardDto { CardTypeId = card.CardTypeId, CardName = card.CardName, CardNumber = card.CardNumber };
         var model = createDto.ToModel(organizationId, officeId);
-        model.LastFour = ExtractLastFour(model.CardNumber);
-        var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
-        var created = await _contactRepository.CreateContactCardAsync(model, encrypted);
+        var created = await _contactCardStore.CreateAsync(model, model.CardNumber);
         return created.ContactCardId;
     }
 
@@ -257,12 +246,6 @@ public class ExternalPropertyOwnerContactResolver
             card.CardTypeId = nestedCardTypeId;
 
         return card.IsEmpty() ? null : card;
-    }
-
-    private static string ExtractLastFour(string cardNumber)
-    {
-        var digits = new string((cardNumber ?? string.Empty).Where(char.IsDigit).ToArray());
-        return digits.Length <= 4 ? digits : digits[^4..];
     }
 
     public static (bool Success, ExternalPropertyIntakeContext? Context, string? ErrorMessage) TryParseIntakeContext(JsonElement body)

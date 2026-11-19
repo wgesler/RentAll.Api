@@ -12,4 +12,21 @@ public class SendGridSettings
     /// Default false so listing/share URLs stay unchanged.
     /// </summary>
     public bool EnableSendGridClickTracking { get; set; }
+
+    public string? PaymentInformationRequestTemplateId { get; set; }
+
+    /// <summary>
+    /// Temporary testing override: when set, every SendGrid template email is sent only to this address.
+    /// </summary>
+    public string? TemplateEmailTestOverrideTo { get; set; }
+
+    /// <summary>
+    /// Temporary testing override: when set, every SendGrid template email uses this From address.
+    /// </summary>
+    public string? TemplateEmailTestOverrideFrom { get; set; }
+
+    /// <summary>
+    /// Optional display name for TemplateEmailTestOverrideFrom.
+    /// </summary>
+    public string? TemplateEmailTestOverrideFromName { get; set; }
 }

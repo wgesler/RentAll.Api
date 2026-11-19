@@ -16,6 +16,7 @@ public interface IReservationRepository
     Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null);
     Task<bool> WasRentedPreviousMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null);
     Task<Reservation?> GetReservationByIdAsync(Guid reservationId, Guid organizationId);
+    Task<Reservation?> GetReservationByIdAsync(Guid reservationId);
     Task<Reservation?> GetReservationByPropertyCodeAndExternalRefNoAsync(Guid organizationId, string propertyCode, string externalRefNo);
     Task<IEnumerable<Reservation>> GetExternalReservationsByOfficeAsync(Guid organizationId, int officeId);
 

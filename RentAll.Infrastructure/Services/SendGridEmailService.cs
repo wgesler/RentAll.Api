@@ -32,14 +32,22 @@ public class SendGridEmailService : IEmailService
         if (message.ToRecipients.Count == 0 || message.ToRecipients.Any(recipient => string.IsNullOrWhiteSpace(recipient.Email)))
             throw new ArgumentException("At least one valid ToRecipient is required.", nameof(message));
 
-        if (string.IsNullOrWhiteSpace(message.Subject))
+        var usesTemplate = !string.IsNullOrWhiteSpace(message.TemplateId);
+        if (!usesTemplate && string.IsNullOrWhiteSpace(message.Subject))
             throw new ArgumentException("Subject is required.", nameof(message));
 
-        if (string.IsNullOrWhiteSpace(message.PlainTextContent) && string.IsNullOrWhiteSpace(message.HtmlContent))
+        if (!usesTemplate && string.IsNullOrWhiteSpace(message.PlainTextContent) && string.IsNullOrWhiteSpace(message.HtmlContent))
             throw new ArgumentException("Either PlainTextContent or HtmlContent must be provided.", nameof(message));
 
         var fromEmail = string.IsNullOrWhiteSpace(message.FromRecipient.Email) ? _settings.FromEmail : message.FromRecipient.Email;
         var fromName = string.IsNullOrWhiteSpace(message.FromRecipient.Name) ? _settings.FromName : message.FromRecipient.Name;
+        if (usesTemplate && !string.IsNullOrWhiteSpace(_settings.TemplateEmailTestOverrideFrom))
+        {
+            fromEmail = _settings.TemplateEmailTestOverrideFrom.Trim();
+            if (!string.IsNullOrWhiteSpace(_settings.TemplateEmailTestOverrideFromName))
+                fromName = _settings.TemplateEmailTestOverrideFromName.Trim();
+            _logger.LogError("[SendGridTemplateTest] Overriding template email From={FromEmail} TemplateId={TemplateId}", fromEmail, message.TemplateId);
+        }
         if (string.IsNullOrWhiteSpace(fromEmail))
             throw new InvalidOperationException("FromRecipient.Email is required either in EmailMessage or SendGridSettings.");
 
@@ -50,13 +58,38 @@ public class SendGridEmailService : IEmailService
         var toRecipients = message.ToRecipients
             .Select(recipient => ToSendGridAddress(recipient.Email, recipient.Name))
             .ToList();
-        var htmlContent = message.HtmlContent;
-        var mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
-            string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
-            null,
-            false);
-        if (!string.IsNullOrWhiteSpace(htmlContent))
-            mail.HtmlContent = AttachInlineImages(mail, htmlContent);
+        if (usesTemplate && !string.IsNullOrWhiteSpace(_settings.TemplateEmailTestOverrideTo))
+        {
+            toRecipients =
+            [
+                ToSendGridAddress(_settings.TemplateEmailTestOverrideTo.Trim(), "Test Recipient")
+            ];
+            _logger.LogError("[SendGridTemplateTest] Overriding template email To={ToEmail} TemplateId={TemplateId}", _settings.TemplateEmailTestOverrideTo, message.TemplateId);
+        }
+
+        SendGridMessage mail;
+        if (usesTemplate)
+        {
+            mail = new SendGridMessage();
+            mail.SetFrom(from);
+            foreach (var recipient in toRecipients)
+                mail.AddTo(recipient);
+            mail.SetTemplateId(message.TemplateId);
+            mail.SetTemplateData(message.TemplateData ?? new Dictionary<string, object?>());
+            if (!string.IsNullOrWhiteSpace(message.Subject))
+                mail.Subject = message.Subject;
+        }
+        else
+        {
+            var htmlContent = message.HtmlContent;
+            mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
+                string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
+                null,
+                false);
+            if (!string.IsNullOrWhiteSpace(htmlContent))
+                mail.HtmlContent = AttachInlineImages(mail, htmlContent);
+        }
+
         mail.SetReplyTo(ToSendGridAddress(fromEmail, fromName));
 
         if (!_settings.EnableSendGridClickTracking)

@@ -2,6 +2,27 @@ namespace RentAll.Infrastructure.Services;
 
 public static class StoragePathBuilder
 {
+    public const string PublicContainerName = "public";
+
+    /// <summary>
+    /// Public logo blob path inside the public container: {organizationId}/{officeName}/logo.png
+    /// </summary>
+    public static string PublicOfficeLogoBlobName(Guid organizationId, string? officeName)
+        => $"{organizationId}/{OfficeFolderName(officeName)}/logo.png";
+
+    /// <summary>
+    /// Full public URL: {baseUrl}/public/{organizationId}/{officeName}/logo.png
+    /// </summary>
+    public static string PublicOfficeLogoUrl(string? azureBlobBaseUrl, Guid organizationId, string? officeName)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(azureBlobBaseUrl)
+            ? "https://rentallstorage.blob.core.windows.net"
+            : azureBlobBaseUrl.Trim().TrimEnd('/');
+        // Office names can contain spaces, so each path segment is escaped for use in an <img src>.
+        var encodedPath = string.Join('/', PublicOfficeLogoBlobName(organizationId, officeName).Split('/').Select(Uri.EscapeDataString));
+        return $"{baseUrl}/{PublicContainerName}/{encodedPath}";
+    }
+
     public static string BuildDirectory(Guid organizationId, string? officeName, string category, string? propertyCode)
     {
         var scope = SplitStorageScope(officeName);

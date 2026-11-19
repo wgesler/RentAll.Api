@@ -9,6 +9,8 @@ public class EmailMessage
     public string Subject { get; set; } = string.Empty;
     public string PlainTextContent { get; set; } = string.Empty;
     public string HtmlContent { get; set; } = string.Empty;
+    public string? TemplateId { get; set; }
+    public Dictionary<string, object?> TemplateData { get; set; } = new();
     public FileDetails? FileDetails { get; set; }
     public List<FileDetails> AdditionalFileDetails { get; set; } = [];
 }

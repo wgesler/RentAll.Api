@@ -181,6 +181,45 @@ public class AzureBlobStorageService : IFileService
             return null;
         }
     }
+
+    public async Task<string> SavePublicOfficeLogoAsync(Guid organizationId, string? officeName, Stream content, string contentType)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        var containerClient = _blobServiceClient.GetBlobContainerClient(StoragePathBuilder.PublicContainerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob).ConfigureAwait(false);
+
+        var blobName = StoragePathBuilder.PublicOfficeLogoBlobName(organizationId, officeName);
+        var blobClient = containerClient.GetBlobClient(blobName);
+        var uploadContentType = string.IsNullOrWhiteSpace(contentType) ? "image/png" : contentType;
+
+        if (content.CanSeek)
+            content.Position = 0;
+
+        await blobClient.UploadAsync(
+            content,
+            new BlobUploadOptions
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = uploadContentType }
+            }).ConfigureAwait(false);
+
+        return BuildUrl(StoragePathBuilder.PublicContainerName, blobName, blobClient.Uri);
+    }
+
+    public async Task DeletePublicOfficeLogoAsync(Guid organizationId, string? officeName)
+    {
+        try
+        {
+            var blobClient = _blobServiceClient
+                .GetBlobContainerClient(StoragePathBuilder.PublicContainerName)
+                .GetBlobClient(StoragePathBuilder.PublicOfficeLogoBlobName(organizationId, officeName));
+            await blobClient.DeleteIfExistsAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting public office logo OrganizationId={OrganizationId} OfficeName={OfficeName}", organizationId, officeName);
+        }
+    }
     #endregion
 
     #region Documents

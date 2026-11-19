@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using RentAll.Api.Services;
+using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -23,6 +25,10 @@ namespace RentAll.Api.Controllers
         private readonly IExternalApiKeyService _externalApiKeyService;
         private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
         private readonly INumberService _numberService;
+        private readonly ContactCardStore _contactCardStore;
+        private readonly IEmailManager _emailManager;
+        private readonly SendGridSettings _sendGridSettings;
+        private readonly StorageSettings _storageSettings;
         private readonly ILogger<ReservationController> _logger;
 
         public ReservationController(
@@ -37,6 +43,10 @@ namespace RentAll.Api.Controllers
             IExternalApiKeyService externalApiKeyService,
             ExternalPropertyUploadLogService externalPropertyUploadLogService,
             INumberService numberService,
+            ContactCardStore contactCardStore,
+            IEmailManager emailManager,
+            IOptions<SendGridSettings> sendGridSettings,
+            IOptions<StorageSettings> storageSettings,
             ILogger<ReservationController> logger)
         {
             _organizationManager = organizationManager;
@@ -50,6 +60,10 @@ namespace RentAll.Api.Controllers
             _externalApiKeyService = externalApiKeyService;
             _externalPropertyUploadLogService = externalPropertyUploadLogService;
             _numberService = numberService;
+            _contactCardStore = contactCardStore;
+            _emailManager = emailManager;
+            _sendGridSettings = sendGridSettings?.Value ?? throw new ArgumentNullException(nameof(sendGridSettings));
+            _storageSettings = storageSettings?.Value ?? throw new ArgumentNullException(nameof(storageSettings));
             _logger = logger;
         }
     }

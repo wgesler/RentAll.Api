@@ -9,6 +9,9 @@ public class ContactCardResponseDto
     public string CardName { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string LastFour { get; set; } = string.Empty;
+    public string? ExpirationDate { get; set; }
+    public bool HasNumberConsent { get; set; }
+    public bool IsExternallyStored { get; set; }
 
     public ContactCardResponseDto(ContactCard card)
     {
@@ -19,5 +22,8 @@ public class ContactCardResponseDto
         CardName = card.CardName;
         DisplayName = card.DisplayName;
         LastFour = card.LastFour;
+        ExpirationDate = card.ExpirationDate;
+        HasNumberConsent = card.NumberConsentId is > 0;
+        IsExternallyStored = card.IsExternallyStored;
     }
 }
