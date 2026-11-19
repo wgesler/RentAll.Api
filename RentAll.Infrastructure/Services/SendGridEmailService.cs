@@ -91,7 +91,6 @@ public class SendGridEmailService : IEmailService
         }
 
         mail.SetReplyTo(ToSendGridAddress(fromEmail, fromName));
-
         if (!_settings.EnableSendGridClickTracking)
             mail.SetClickTracking(false, false);
 

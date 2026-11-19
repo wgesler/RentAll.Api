@@ -45,13 +45,11 @@ public partial class ReservationController
             if (reservation == null)
                 return NotFound("Reservation not found");
 
-            // Email.EmailTemplate (office row, then organization row) wins; appsettings is the fallback.
+            // The organization's SendGrid template, set in Settings > Email > SendGrid Templates.
             var storedTemplate = await _emailRepository.GetEmailTemplateByNameAsync(CurrentOrganizationId, reservation.OfficeId, EmailTemplateNames.PaymentRequest);
             var templateId = storedTemplate?.TemplateId?.Trim();
             if (string.IsNullOrWhiteSpace(templateId))
-                templateId = _sendGridSettings.PaymentInformationRequestTemplateId?.Trim();
-            if (string.IsNullOrWhiteSpace(templateId))
-                return BadRequest($"No SendGrid template is set for {EmailTemplateNames.PaymentRequest}. Add one to Email.EmailTemplate.");
+                return BadRequest("No Payment Request template is set. Add its SendGrid template ID in Settings > Email > SendGrid Templates.");
 
             var organization = await _organizationRepository.GetOrganizationByIdAsync(CurrentOrganizationId);
             if (organization == null)
@@ -79,6 +77,9 @@ public partial class ReservationController
                 toName = (reservation.TenantName ?? reservation.ContactName ?? toEmail).Trim();
             var salutationName = toName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? toName;
             var address = AccountingOfficeAddress(accountingOffice);
+            // The staff member who clicked Send Payment Email signs it.
+            var sender = await _userRepository.GetUserByIdAsync(CurrentUser);
+            var senderName = string.Join(' ', new[] { sender?.FirstName, sender?.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
 
             var email = new Email
             {
@@ -96,6 +97,7 @@ public partial class ReservationController
                 TemplateData = new Dictionary<string, object?>
                 {
                     ["salutationName"] = salutationName,
+                    ["senderName"] = senderName,
                     ["companyName"] = organization.Name ?? string.Empty,
                     ["companyOffice"] = string.Join(' ', new[] { organization.Name, office?.Name }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())),
                     ["displayName"] = organization.DisplayName?.Trim() ?? string.Empty,

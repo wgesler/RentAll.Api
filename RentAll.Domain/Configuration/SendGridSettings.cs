@@ -13,8 +13,6 @@ public class SendGridSettings
     /// </summary>
     public bool EnableSendGridClickTracking { get; set; }
 
-    public string? PaymentInformationRequestTemplateId { get; set; }
-
     /// <summary>
     /// Temporary testing override: when set, every SendGrid template email is sent only to this address.
     /// </summary>
