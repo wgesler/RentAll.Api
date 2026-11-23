@@ -34,7 +34,7 @@ public partial class ContactController
         }
 
         var saved = await _contactBankStore.UpsertAsync(organizationId, officeId, existingBankId, bank.ToModel(), bank.AccountNumber);
-        return saved?.ContactBankId;
+        return saved.ContactBankId;
     }
     #endregion
 }

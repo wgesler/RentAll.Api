@@ -18,7 +18,7 @@ public partial class ReservationController
         var request = new PayRequestRequestDto(token);
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         try
         {
@@ -45,7 +45,7 @@ public partial class ReservationController
         var request = new PayRequestRequestDto(token);
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         int? officeId = null;
         try
@@ -84,7 +84,7 @@ public partial class ReservationController
         var request = new PayResponseRequestDto(token, txId, consentId);
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         try
         {
@@ -124,7 +124,7 @@ public partial class ReservationController
         dto.Token = (token ?? string.Empty).Trim();
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         int? officeId = null;
         try

@@ -249,6 +249,7 @@ public partial class ReservationController
 
             contact.ApplyToExistingOwnerContact(existing, context.OfficeId, currentUser);
             var updated = await _contactRepository.UpdateByIdAsync(existing);
+            await _contactBankStore.ApplyExternalAsync(updated, contact.BankName, contact.RoutingNumber, contact.AccountNumber, contact.BankAccountTypeId, contact.NameOnAccount, currentUser);
             return (true, updated.ContactId, null);
         }
 
@@ -259,6 +260,7 @@ public partial class ReservationController
             EntityType.Owner => await _contactRepository.CreateAsync(contact.ToNewOwnerContactModel(context.OrganizationId, context.OfficeId, code, currentUser)),
             _ => await _contactRepository.CreateAsync(contact.ToNewTenantContactModel(context.OrganizationId, context.OfficeId, code, currentUser))
         };
+        await _contactBankStore.ApplyExternalAsync(created, contact.BankName, contact.RoutingNumber, contact.AccountNumber, contact.BankAccountTypeId, contact.NameOnAccount, currentUser);
         return (true, created.ContactId, null);
     }
 

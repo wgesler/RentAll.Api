@@ -17,7 +17,7 @@ public partial class ReservationController
         dto.ReservationId = reservationId;
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         var amount = dto.Amount;
         int? officeId = null;

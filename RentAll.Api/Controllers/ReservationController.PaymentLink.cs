@@ -12,7 +12,7 @@ public partial class ReservationController
         var request = new ReservationPaymentLinkRequestDto(reservationId);
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         int? officeId = null;
         try
@@ -42,7 +42,7 @@ public partial class ReservationController
         var request = new ReservationPaymentLinkRequestDto(reservationId);
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         Reservation? reservation = null;
         try

@@ -166,6 +166,12 @@ public class ExternalPropertyOwnerContactResolver
         contact.State = TryGetTrimmedString(contactElement, "state");
         contact.Zip = TryGetTrimmedString(contactElement, "zip");
         contact.CompanyName = TryGetTrimmedString(contactElement, "companyName");
+        contact.BankName = TryGetTrimmedString(contactElement, "bankName");
+        contact.RoutingNumber = TryGetTrimmedString(contactElement, "routingNumber");
+        contact.AccountNumber = TryGetTrimmedString(contactElement, "accountNumber");
+        contact.NameOnAccount = TryGetTrimmedString(contactElement, "nameOnAccount");
+        if (TryGetProperty(contactElement, "bankAccountTypeId", out var bankAccountTypeElement) && TryCoerceInt32(bankAccountTypeElement, out var bankAccountTypeId))
+            contact.BankAccountTypeId = bankAccountTypeId;
         if (TryGetProperty(contactElement, "entityTypeId", out var entityTypeElement)
             && ExternalPropertyContactDto.TryCoerceContactEntityType(entityTypeElement, out var entityTypeId))
             contact.EntityTypeId = entityTypeId;
@@ -406,15 +412,9 @@ public class ExternalPropertyOwnerContactResolver
         return null;
     }
 
-    private async Task ApplyContactBankAsync(Contact contact, ExternalPropertyContactDto contactDto, Guid currentUser)
+    private Task ApplyContactBankAsync(Contact contact, ExternalPropertyContactDto contactDto, Guid currentUser)
     {
-        if (!contactDto.HasBankInformation())
-            return;
-
-        var bank = contact.ContactBankId is > 0 ? await _contactRepository.GetContactBankByIdAsync(contact.ContactBankId.Value, contact.OrganizationId, contact.OfficeId) : null;
-        bank ??= new ContactBank();
-        contactDto.ApplyToContactBank(bank);
-        await _contactBankStore.SaveAsync(contact, bank, contactDto.ClearAccountNumber(), currentUser);
+        return _contactBankStore.ApplyExternalAsync(contact, contactDto.BankName, contactDto.RoutingNumber, contactDto.AccountNumber, contactDto.BankAccountTypeId, contactDto.NameOnAccount, currentUser);
     }
 
     private static bool TryGetProperty(JsonElement body, string name, out JsonElement value)

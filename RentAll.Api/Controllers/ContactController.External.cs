@@ -157,7 +157,7 @@ public partial class ContactController
         {
             var bank = await _contactRepository.GetContactBankByIdAsync(contact.ContactBankId.Value, contact.OrganizationId, contact.OfficeId);
             if (bank != null)
-                response.ApplyBank(bank.BankName, bank.RoutingNumber, bank.LastFour);
+                response.ApplyBank(bank);
         }
 
         if (contact.ContactCardId is not > 0)

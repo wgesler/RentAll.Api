@@ -58,7 +58,7 @@ public partial class ReservationController
                 return Ok();
             }
             _logger.LogError("[NumberPayment] Step=Invalid Reason={Reason} TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid}", errorMessage, post.TransactionID, post.ConsentID, post.RPGUID);
-            return BadRequest(errorMessage);
+            return BadRequest(errorMessage ?? "Invalid request data");
         }
 
         _logger.LogInformation("[NumberPayment] Step=Received TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid} REFID={RefId} Amount={Amount} Approval={Approval}",

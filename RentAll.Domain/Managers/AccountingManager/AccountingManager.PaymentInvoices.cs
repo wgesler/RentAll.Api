@@ -2323,7 +2323,7 @@ public partial class AccountingManager
         if (officeId > 0 && !officeAccess.Contains(officeId))
             officeAccess.Add(officeId);
 
-        return await _contactRepository.CreateAsync(new Contact
+        var vendor = await _contactRepository.CreateAsync(new Contact
         {
             OrganizationId = company.OrganizationId,
             OfficeId = officeId > 0 ? officeId : company.OfficeId,
@@ -2350,12 +2350,27 @@ public partial class AccountingManager
             Notes = company.Notes,
             IsInternational = company.IsInternational,
             PaymentTerms = company.PaymentTerms,
-            BankName = company.BankName,
-            RoutingNumber = company.RoutingNumber,
-            AccountNumber = company.AccountNumber,
             IsActive = true,
             CreatedBy = currentUser
         });
+
+        if (company.ContactBankId is not > 0)
+            return vendor;
+
+        var companyBank = await _contactRepository.GetContactBankByIdAsync(company.ContactBankId.Value, company.OrganizationId, company.OfficeId);
+        if (companyBank == null)
+            return vendor;
+
+        var encryptedAccountNumber = string.IsNullOrWhiteSpace(companyBank.AccountNumber) ? null : Convert.FromBase64String(companyBank.AccountNumber);
+        companyBank.ContactBankId = 0;
+        companyBank.OfficeId = vendor.OfficeId;
+        companyBank.NumberConsentId = null;
+        companyBank.ReservationId = null;
+        companyBank.AuthorizedOn = null;
+        var vendorBank = await _contactRepository.CreateContactBankAsync(companyBank, encryptedAccountNumber);
+        vendor.ContactBankId = vendorBank.ContactBankId;
+        vendor.ModifiedBy = currentUser;
+        return await _contactRepository.UpdateByIdAsync(vendor);
     }
 
     private static List<Guid> ResolveReferralBillPropertyIds(Invoice mainInvoice, Reservation reservation)

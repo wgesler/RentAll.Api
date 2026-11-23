@@ -116,3 +116,8 @@ public sealed class EncryptStoredAccountNumbersResponseDto
 {
     public int Converted { get; set; }
 }
+
+public sealed class AccountNumberRevealResponseDto
+{
+    public string AccountNumber { get; set; } = string.Empty;
+}

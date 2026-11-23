@@ -49,6 +49,8 @@ public class ExternalPropertyContactDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? BankAccountTypeId { get; set; }
+    public string? NameOnAccount { get; set; }
     public string? W9 { get; set; }
 
     public static bool IsAllowedContactEntityType(int entityTypeId) =>
@@ -380,6 +382,10 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.bankName is {BankName.Trim().Length} characters; max is 250.");
         if (!string.IsNullOrWhiteSpace(RoutingNumber) && RoutingNumber.Trim().Length > 50)
             errors.Add($"{fieldLabel}.routingNumber is {RoutingNumber.Trim().Length} characters; max is 50.");
+        if (BankAccountTypeId.HasValue && (BankAccountTypeId.Value == (int)BankAccountType.Unknown || !Enum.IsDefined(typeof(BankAccountType), BankAccountTypeId.Value)))
+            errors.Add($"{fieldLabel}.bankAccountTypeId must be 1=PersonalChecking, 2=PersonalSavings, 3=BusinessChecking, or 4=BusinessSavings. Received {BankAccountTypeId.Value}.");
+        if (!string.IsNullOrWhiteSpace(NameOnAccount) && NameOnAccount.Trim().Length > 100)
+            errors.Add($"{fieldLabel}.nameOnAccount is {NameOnAccount.Trim().Length} characters; max is 100.");
 
         var accountNumber = TrimOrNull(AccountNumber);
         if (accountNumber != null && !accountNumber.Contains('*', StringComparison.Ordinal))
@@ -408,29 +414,6 @@ public class ExternalPropertyContactDto
             contact.IsActive = IsActive.Value;
         if (IsInternational.HasValue)
             contact.IsInternational = IsInternational.Value;
-    }
-
-    public bool HasBankInformation() => TrimOrNull(BankName) != null || TrimOrNull(RoutingNumber) != null || ClearAccountNumber() != null;
-
-    /// <summary>Copies the bank fields that were sent onto the contact's bank account; fields left out keep their values.</summary>
-    public void ApplyToContactBank(ContactBank bank)
-    {
-        var bankName = TrimOrNull(BankName);
-        if (bankName != null)
-            bank.BankName = bankName;
-        var routingNumber = TrimOrNull(RoutingNumber);
-        if (routingNumber != null)
-            bank.RoutingNumber = routingNumber;
-    }
-
-    public string? ClearAccountNumber()
-    {
-        var accountNumber = TrimOrNull(AccountNumber);
-        if (accountNumber == null || accountNumber.Contains('*', StringComparison.Ordinal))
-            return null;
-
-        var digits = new string(accountNumber.Where(char.IsDigit).ToArray());
-        return digits.Length >= 4 ? digits : null;
     }
 
     private void CollectOwnerProfileErrors(string fieldLabel, List<string> errors)

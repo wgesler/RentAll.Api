@@ -28,6 +28,8 @@ public class ExternalContactResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? BankAccountTypeId { get; set; }
+    public string? NameOnAccount { get; set; }
     public int? CardTypeId { get; set; }
     public string? CardName { get; set; }
     public string? CardNumber { get; set; }
@@ -66,11 +68,13 @@ public class ExternalContactResponseDto
         };
     }
 
-    public void ApplyBank(string? bankName, string? routingNumber, string? lastFour)
+    public void ApplyBank(ContactBank bank)
     {
-        BankName = bankName;
-        RoutingNumber = routingNumber;
-        AccountNumber = MaskAccountNumber(lastFour);
+        BankName = bank.BankName;
+        RoutingNumber = bank.RoutingNumber;
+        AccountNumber = MaskAccountNumber(bank.LastFour);
+        BankAccountTypeId = bank.BankAccountTypeId;
+        NameOnAccount = bank.NameOnAccount;
     }
 
     public void ApplyCard(int cardTypeId, string? cardName, string? lastFour)

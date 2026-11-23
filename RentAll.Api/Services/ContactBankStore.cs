@@ -19,8 +19,8 @@ public class ContactBankStore
         _encryptionService = encryptionService;
     }
 
-    /// <summary>Creates or updates the bank row; the caller links it to the contact. Returns null when the row no longer exists.</summary>
-    public async Task<ContactBank?> UpsertAsync(Guid organizationId, int officeId, int? existingBankId, ContactBank model, string? accountNumber)
+    /// <summary>Creates or updates the bank row; the caller links it to the contact.</summary>
+    public async Task<ContactBank> UpsertAsync(Guid organizationId, int officeId, int? existingBankId, ContactBank model, string? accountNumber)
     {
         model.OrganizationId = organizationId;
         model.OfficeId = officeId;
@@ -58,9 +58,6 @@ public class ContactBankStore
     public async Task<ContactBank> SaveAsync(Contact contact, ContactBank model, string? accountNumber, Guid modifiedBy)
     {
         var saved = await UpsertAsync(contact.OrganizationId, contact.OfficeId, contact.ContactBankId, model, accountNumber);
-        if (saved == null)
-            throw new InvalidOperationException("The contact's bank account could not be saved.");
-
         if (contact.ContactBankId != saved.ContactBankId)
         {
             contact.ContactBankId = saved.ContactBankId;
@@ -68,6 +65,35 @@ public class ContactBankStore
             await _contactRepository.UpdateByIdAsync(contact);
         }
         return saved;
+    }
+
+    /// <summary>
+    /// Bank fields from an external intake (property or reservation API): fields that were sent replace the stored ones,
+    /// fields left out keep their values. Nothing sent means nothing changes. Without a stored value, the account type
+    /// defaults to personal checking and the name on the account to the contact's first and last name.
+    /// </summary>
+    public async Task ApplyExternalAsync(Contact contact, string? bankName, string? routingNumber, string? accountNumber, int? bankAccountTypeId, string? nameOnAccount, Guid modifiedBy)
+    {
+        bankName = string.IsNullOrWhiteSpace(bankName) ? null : bankName.Trim();
+        routingNumber = string.IsNullOrWhiteSpace(routingNumber) ? null : routingNumber.Trim();
+        nameOnAccount = string.IsNullOrWhiteSpace(nameOnAccount) ? null : nameOnAccount.Trim();
+        var digits = ClearAccountDigits(accountNumber);
+        if (bankName == null && routingNumber == null && digits == null && bankAccountTypeId == null && nameOnAccount == null)
+            return;
+
+        var bank = contact.ContactBankId is > 0 ? await _contactRepository.GetContactBankByIdAsync(contact.ContactBankId.Value, contact.OrganizationId, contact.OfficeId) : null;
+        bank ??= new ContactBank();
+        bank.BankName = bankName ?? bank.BankName;
+        bank.RoutingNumber = routingNumber ?? bank.RoutingNumber;
+        bank.BankAccountTypeId = bankAccountTypeId ?? (bank.BankAccountTypeId != (int)BankAccountType.Unknown ? bank.BankAccountTypeId : (int)BankAccountType.PersonalChecking);
+        bank.NameOnAccount = nameOnAccount ?? bank.NameOnAccount ?? DefaultNameOnAccount(contact);
+        await SaveAsync(contact, bank, digits, modifiedBy);
+    }
+
+    private static string? DefaultNameOnAccount(Contact contact)
+    {
+        var name = string.Join(' ', new[] { contact.FirstName, contact.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
+        return name.Length == 0 ? null : name.Length > 100 ? name[..100] : name;
     }
 
     /// <summary>Removes the contact's bank account and clears the link.</summary>
