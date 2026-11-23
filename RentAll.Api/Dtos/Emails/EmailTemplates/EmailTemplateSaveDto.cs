@@ -1,32 +1,7 @@
 namespace RentAll.Api.Dtos.Emails.EmailTemplates;
 
-public class EmailTemplateResponseDto
-{
-    public int EmailTemplateId { get; set; }
-    public Guid OrganizationId { get; set; }
-    public int? OfficeId { get; set; }
-    public string EmailName { get; set; } = string.Empty;
-    public string TemplateId { get; set; } = string.Empty;
-
-    public EmailTemplateResponseDto(EmailTemplate template)
-    {
-        EmailTemplateId = template.EmailTemplateId;
-        OrganizationId = template.OrganizationId;
-        OfficeId = template.OfficeId;
-        EmailName = template.EmailName;
-        TemplateId = template.TemplateId;
-    }
-}
-
-/// <summary>An email name the settings screen can set a template for.</summary>
-public class EmailTemplateNameDto
-{
-    public string EmailName { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-}
-
 /// <summary>Create, or replace the template of the existing row for the same organization, office and email.</summary>
-public class SaveEmailTemplateDto
+public class EmailTemplateSaveDto
 {
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
@@ -48,5 +23,17 @@ public class SaveEmailTemplateDto
             return (false, "TemplateId must be a SendGrid dynamic template ID (it starts with d-)");
 
         return (true, null);
+    }
+
+    /// <summary>The template to save; the controller sets the scope (organization/office) and the existing row's id.</summary>
+    public EmailTemplate ToModel()
+    {
+        return new EmailTemplate
+        {
+            OrganizationId = OrganizationId,
+            OfficeId = OfficeId,
+            EmailName = EmailTemplateNames.Canonical(EmailName),
+            TemplateId = TemplateId.Trim()
+        };
     }
 }

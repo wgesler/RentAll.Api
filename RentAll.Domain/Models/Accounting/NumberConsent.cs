@@ -34,9 +34,15 @@ public class NumberStoredCardCharge
 public class NumberStoredCardChargeResult
 {
     public bool Approved { get; set; }
+    /// <summary>The call itself worked (false: EasyPay could not process the request at all).</summary>
+    public bool FunctionOk { get; set; }
     public long TxId { get; set; }
     public string? TxnCode { get; set; }
     public string? Message { get; set; }
+    /// <summary>EasyPay's error text (ErrMsg), when there is one.</summary>
+    public string? ErrMsg { get; set; }
+    /// <summary>EasyPay's response text (RespMsg); their docs say to show this to the user.</summary>
+    public string? RespMsg { get; set; }
     public int ErrCode { get; set; }
     public bool IsPartialApproval { get; set; }
     /// <summary>ApprovedAmounts.TotalAmt; Number says this can differ from what was requested.</summary>

@@ -48,6 +48,8 @@ public class CreateContactDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? BankAccountTypeId { get; set; }
+    public string? NameOnAccount { get; set; }
     public int? ContactCardId { get; set; }
     public UpsertContactCardDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
@@ -109,6 +111,12 @@ public class CreateContactDto
         if (identificationNumber != null && identificationNumber.Length > 9)
             return (false, "IdentificationNumber must be 9 characters or fewer after removing hyphens");
 
+        if (BankAccountTypeId.HasValue && !Enum.IsDefined(typeof(BankAccountType), BankAccountTypeId.Value))
+            return (false, $"Invalid BankAccountTypeId value: {BankAccountTypeId}");
+
+        if ((NameOnAccount ?? string.Empty).Trim().Length > 100)
+            return (false, "NameOnAccount must be 100 characters or fewer");
+
         if (ContactCard != null)
         {
             var (cardIsValid, cardError) = ContactCard.IsValid(requireCardNumber: true);
@@ -167,6 +175,8 @@ public class CreateContactDto
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
+            BankAccountTypeId = BankAccountTypeId,
+            NameOnAccount = string.IsNullOrWhiteSpace(NameOnAccount) ? null : NameOnAccount.Trim(),
             ContactCardId = ContactCardId,
             IsOwnerReady = IsOwnerReady,
             OwnerLeadId = OwnerLeadId,

@@ -8,7 +8,7 @@ namespace RentAll.Api.Controllers
         [HttpGet("email-template/names")]
         public IActionResult GetEmailTemplateNames()
         {
-            return Ok(EmailTemplateNames.All.Select(pair => new EmailTemplateNameDto { EmailName = pair.Key, DisplayName = pair.Value }));
+            return Ok(EmailTemplateNames.All.Select(pair => new EmailTemplateNameResponseDto(pair.Key, pair.Value)));
         }
 
         [HttpGet("email-template")]
@@ -45,7 +45,7 @@ namespace RentAll.Api.Controllers
 
         /// <summary>Saves the template for an organization/office/email: updates the row if it exists, otherwise adds it.</summary>
         [HttpPut("email-template")]
-        public async Task<IActionResult> SaveEmailTemplate([FromBody] SaveEmailTemplateDto dto)
+        public async Task<IActionResult> SaveEmailTemplate([FromBody] EmailTemplateSaveDto dto)
         {
             if (dto == null)
                 return BadRequest("Email template data is required");
@@ -60,19 +60,15 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var emailName = EmailTemplateNames.Canonical(dto.EmailName);
+                var model = dto.ToModel();
+                model.OrganizationId = organizationId;
+                model.OfficeId = officeId;
+                var emailName = model.EmailName;
                 var existing = (await _emailRepository.GetEmailTemplatesByOrganizationIdAsync(organizationId))
                     .FirstOrDefault(template => template.OfficeId == officeId
                         && template.EmailName.Equals(emailName, StringComparison.OrdinalIgnoreCase));
 
-                var model = new EmailTemplate
-                {
-                    EmailTemplateId = existing?.EmailTemplateId ?? 0,
-                    OrganizationId = organizationId,
-                    OfficeId = officeId,
-                    EmailName = emailName,
-                    TemplateId = dto.TemplateId.Trim()
-                };
+                model.EmailTemplateId = existing?.EmailTemplateId ?? 0;
                 var saved = existing == null
                     ? await _emailRepository.CreateEmailTemplateAsync(model)
                     : await _emailRepository.UpdateEmailTemplateByIdAsync(model);

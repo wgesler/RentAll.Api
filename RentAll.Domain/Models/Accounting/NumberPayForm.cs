@@ -16,4 +16,15 @@ public class NumberPayForm
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
+
+    /// <summary>PFS only: when set, Number creates a subscription (and a consent) for this card.</summary>
+    public NumberSubscription? Subscription { get; set; }
+}
+
+/// <summary>A PFS subscription. Period is Number's value, e.g. WEEKLY or MONTHLY; FirstPayDate must be today or later.</summary>
+public class NumberSubscription
+{
+    public decimal Amount { get; set; }
+    public string Period { get; set; } = "MONTHLY";
+    public DateOnly FirstPayDate { get; set; }
 }

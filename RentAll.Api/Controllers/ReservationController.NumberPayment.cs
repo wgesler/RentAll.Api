@@ -34,24 +34,36 @@ public partial class ReservationController
         }
         catch (JsonException)
         {
-            // Not JSON: the form may be set to the encrypted or query-string post instead.
+            // Not JSON: may be the PFS pipe format (TXID|5|CARDNO|4864|...|CONSENTID|1).
+            post = NumberPostDto.FromPipePost(raw);
         }
+        post?.ApplyWebhookShape();
 
-        if (post == null || (post.TransactionID <= 0 && post.ConsentID <= 0))
+        _logger.LogError("[NumberPayment] Step=Raw RemoteIp={RemoteIp} ContentType={ContentType} Body={Body}", HttpContext.Connection.RemoteIpAddress?.ToString(), Request.ContentType, raw.Length > 4000 ? raw[..4000] : raw);
+
+        if (post == null)
         {
             _logger.LogError("[NumberPayment] Step=Unreadable ContentType={ContentType} Length={Length} Query={Query}",
                 Request.ContentType, raw.Length, Request.QueryString.Value);
             return BadRequest("Unreadable Number payment post");
         }
 
+        var (isValid, errorMessage) = post.IsValid();
+        if (!isValid)
+        {
+            if (!post.HasIds && !string.IsNullOrWhiteSpace(post.Type))
+            {
+                // A webhook we have nothing to do with (no transaction or saved card): acknowledge it so Number stops retrying.
+                _logger.LogInformation("[NumberPayment] Step=IgnoredWebhook Type={Type} RPGUID={RpGuid}", post.Type, post.RPGUID);
+                return Ok();
+            }
+            _logger.LogError("[NumberPayment] Step=Invalid Reason={Reason} TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid}", errorMessage, post.TransactionID, post.ConsentID, post.RPGUID);
+            return BadRequest(errorMessage);
+        }
+
         _logger.LogInformation("[NumberPayment] Step=Received TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid} REFID={RefId} Amount={Amount} Approval={Approval}",
             post.TransactionID, post.ConsentID, post.RPGUID, post.REFID, post.Amount, post.ApprovalCode);
-
-        if (!Guid.TryParse(post.RPGUID, out var reservationId))
-        {
-            _logger.LogError("[NumberPayment] Step=NoReservationId TxID={TxId} ConsentID={ConsentId} RPGUID={RpGuid}", post.TransactionID, post.ConsentID, post.RPGUID);
-            return BadRequest("RPGUID is not a reservation id");
-        }
+        var reservationId = post.ReservationId;
 
         int? officeId = null;
         try
@@ -85,11 +97,131 @@ public partial class ReservationController
         }
     }
 
+    /// <summary>
+    /// Handles what EasyPay returned to a pay-response page (?TXID=..&amp;CID=..): confirms the IDs with EasyPay, saves
+    /// the consent to the reservation and contact card (same path as the webhook, so it is saved once), holds the
+    /// subscription, and reports what happened.
+    /// </summary>
+    private async Task<NumberReturnResult> ProcessNumberReturnAsync(Guid reservationId, long txId, long consentId)
+    {
+        _logger.LogError("[NumberPayment] Step=Return ReservationId={ReservationId} TXID={TxId} CID={ConsentId} Query={Query}",
+            reservationId, txId, consentId, Request.QueryString.Value);
+
+        var result = new NumberReturnResult
+        {
+            ReservationId = reservationId,
+            TxId = txId,
+            ConsentId = consentId,
+            Query = Request.Query.ToDictionary(pair => pair.Key, pair => pair.Value.ToString())
+        };
+
+        Organization? organization = null;
+        try
+        {
+            var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId);
+            if (reservation == null)
+            {
+                _logger.LogError("[NumberPayment] Step=ReturnReservationNotFound ReservationId={ReservationId}", reservationId);
+                result.Outcome = "Reservation not found";
+                return result;
+            }
+            result.ReservationCode = reservation.ReservationCode;
+            organization = await _organizationRepository.GetOrganizationByIdAsync(reservation.OrganizationId);
+            if (organization == null)
+            {
+                result.Outcome = "Organization not found";
+                return result;
+            }
+
+            var post = new NumberPostDto { RPGUID = reservationId.ToString(), ConsentID = consentId, TransactionID = txId };
+            IActionResult? outcome = null;
+            if (consentId > 0)
+            {
+                outcome = await ReceiveNumberConsentAsync(organization, reservation, post);
+            }
+            else if (txId > 0)
+            {
+                // The redirect carries no amount; take it from Number so the transaction check can match it.
+                var transaction = await WithNumberSessionAsync(organization, reservation.OfficeId,
+                    session => _numberService.GetTransactionAsync(session, txId, HttpContext.RequestAborted), HttpContext.RequestAborted);
+                result.Transaction = transaction;
+                post.Amount = transaction?.Amount ?? 0;
+                outcome = await ReceiveNumberTransactionAsync(organization, reservation, post);
+            }
+            else
+            {
+                result.Outcome = "EasyPay sent no TXID or CID";
+            }
+
+            if (outcome != null)
+                result.Outcome = outcome is ObjectResult objectResult
+                    ? $"{objectResult.StatusCode ?? 200}: {objectResult.Value}"
+                    : (outcome as Microsoft.AspNetCore.Mvc.Infrastructure.IStatusCodeActionResult)?.StatusCode is int status ? status.ToString() : outcome.GetType().Name;
+            result.Consent = HttpContext.Items[NumberConsentItemKey] as NumberConsent;
+            result.ContactCardId = HttpContext.Items[NumberCardItemKey] as int?;
+            result.SubscriptionHeld = HttpContext.Items[NumberHoldItemKey] as bool?;
+
+            var saved = await _reservationRepository.GetReservationByIdAsync(reservationId);
+            result.ReservationConsentId = saved?.NumberConsentId;
+        }
+        catch (Exception ex)
+        {
+            // Never strand the payer on an error page; the webhook (production) is the backup.
+            LogApplicationError(ex, "ReturnFromNumberForm", null);
+            result.Outcome = "Error: " + ex.Message;
+        }
+
+        var website = organization?.Website?.Trim();
+        if (!string.IsNullOrWhiteSpace(website))
+            result.Website = website.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || website.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                ? website
+                : "https://" + website.TrimStart('/');
+        return result;
+    }
+
+    // HttpContext.Items keys: the consent/card/hold steps record what they did so the return page can show it.
+    private const string NumberConsentItemKey = "Number.Consent";
+    private const string NumberCardItemKey = "Number.ContactCardId";
+    private const string NumberHoldItemKey = "Number.SubscriptionHeld";
+
+    private sealed class NumberReturnResult
+    {
+        public Guid ReservationId { get; set; }
+        public string? ReservationCode { get; set; }
+        /// <summary>Every query value EasyPay put on the redirect.</summary>
+        public Dictionary<string, string> Query { get; set; } = new();
+        public long TxId { get; set; }
+        public long ConsentId { get; set; }
+        public string? Outcome { get; set; }
+        public NumberConsent? Consent { get; set; }
+        public NumberTransaction? Transaction { get; set; }
+        public int? ReservationConsentId { get; set; }
+        public int? ContactCardId { get; set; }
+        public bool? SubscriptionHeld { get; set; }
+        public string? Website { get; set; }
+    }
+
+
+    /// <summary>A PFS subscription exists only to save the card; hold it so it never bills on its own.</summary>
+    private async Task TryHoldNumberSubscriptionAsync(Organization organization, Reservation reservation, long consentId)
+    {
+        try
+        {
+            HttpContext.Items[NumberHoldItemKey] = await WithNumberSessionAsync(organization, reservation.OfficeId,
+                session => _numberService.HoldSubscriptionAsync(session, consentId, HttpContext.RequestAborted), HttpContext.RequestAborted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NumberPayment] Step=SubscriptionHoldFailed ConsentID={ConsentId} ReservationId={ReservationId}", consentId, reservation.ReservationId);
+        }
+    }
+
     /// <summary>Save-card form: no charge, just a saved card to keep on the reservation and its contact.</summary>
     private async Task<IActionResult> ReceiveNumberConsentAsync(Organization organization, Reservation reservation, NumberPostDto post)
     {
         var consent = await WithNumberSessionAsync(organization, reservation.OfficeId,
             session => _numberService.GetConsentAsync(session, post.ConsentID, HttpContext.RequestAborted), HttpContext.RequestAborted);
+        HttpContext.Items[NumberConsentItemKey] = consent;
         if (consent == null)
         {
             _logger.LogError("[NumberPayment] Step=NotVerified ConsentID={ConsentId} Reason=ConsentNotFoundAtNumber", post.ConsentID);
@@ -120,6 +252,7 @@ public partial class ReservationController
             consent.ExpDate ?? post.ExpireDate,
             consent.FirstName ?? post.CardholderFirstName ?? post.CustomerFirstName,
             consent.LastName ?? post.CardholderLastName ?? post.CustomerLastName));
+        await TryHoldNumberSubscriptionAsync(organization, reservation, consent.Id);
         return Ok();
     }
 
@@ -167,6 +300,7 @@ public partial class ReservationController
             await SaveNumberCardOnFileAsync(reservation, consentId, new NumberCardDetails(
                 post.CardType, post.CardNumber, post.ExpireDate,
                 post.CardholderFirstName ?? post.CustomerFirstName, post.CardholderLastName ?? post.CustomerLastName));
+            await TryHoldNumberSubscriptionAsync(organization, reservation, consentId);
         }
 
         if (approvedAmount is not > 0)
@@ -357,6 +491,7 @@ public partial class ReservationController
                 NumberConsentId = (int)consentId
             }, SystemUserId);
 
+            HttpContext.Items[NumberCardItemKey] = saved.ContactCardId;
             _logger.LogInformation("[NumberPayment] Step=CardSaved ConsentID={ConsentId} ContactId={ContactId} ContactCardId={ContactCardId}",
                 consentId, contact.ContactId, saved.ContactCardId);
         }
@@ -403,23 +538,4 @@ public partial class ReservationController
             ?? paymentCodes.FirstOrDefault(code => code.Description.Split(' ', '-', '/').Any(word => word.Equals("CC", StringComparison.OrdinalIgnoreCase)));
     }
 
-    // Field names as Number's PayForm JSON POST sends them.
-    private sealed class NumberPostDto
-    {
-        public long ConsentID { get; set; }
-        public long TransactionID { get; set; }
-        public string? CardNumber { get; set; }
-        public string? CardType { get; set; }
-        public string? ExpireDate { get; set; }
-        public decimal Amount { get; set; }
-        public decimal Surcharge { get; set; }
-        public string? CardholderFirstName { get; set; }
-        public string? CardholderLastName { get; set; }
-        public string? CustomerFirstName { get; set; }
-        public string? CustomerLastName { get; set; }
-        public string? Email { get; set; }
-        public string? REFID { get; set; }
-        public string? RPGUID { get; set; }
-        public string? ApprovalCode { get; set; }
-    }
 }

@@ -237,6 +237,21 @@ public interface IAccountingRepository
         string memo);
     #endregion
 
+    #region PaymentPages
+    Task<PaymentPage?> GetPaymentPageByOfficeIdAsync(Guid organizationId, int? officeId);
+    Task<PaymentPage?> GetPaymentPageByIdAsync(int paymentPageId, Guid organizationId);
+    Task<IEnumerable<PaymentPage>> GetPaymentPagesByOrganizationIdAsync(Guid organizationId);
+    Task<PaymentPage> AddPaymentPageAsync(PaymentPage page);
+    Task<PaymentPage> UpdatePaymentPageByIdAsync(PaymentPage page);
+    Task DeletePaymentPageByIdAsync(int paymentPageId, Guid organizationId);
+    #endregion
+
+    #region PaymentLinks
+    Task<PaymentLink?> GetPaymentLinkByTokenAsync(string token);
+    Task<PaymentLink> AddPaymentLinkAsync(PaymentLink link);
+    Task<PaymentLink?> CompletePaymentLinkByTokenAsync(string token);
+    #endregion
+
     #region NumberCredentials
     Task<NumberCredential?> GetNumberCredentialByOfficeIdAsync(Guid organizationId, int officeId);
     Task<NumberCredential> AddNumberCredentialAsync(NumberCredential credential);

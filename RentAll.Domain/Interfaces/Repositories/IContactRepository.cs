@@ -20,6 +20,7 @@ public interface IContactRepository
     Task<Contact> CreateAsync(Contact contact);
     Task<Contact> UpdateByIdAsync(Contact contact);
     Task SaveEncryptedAccountNumberAsync(Guid contactId, byte[] encryptedAccountNumber, string lastFour, Guid modifiedBy);
+    Task SaveBankInformationAsync(Guid contactId, string bankName, string routingNumber, byte[] encryptedAccountNumber, string lastFour, int bankAccountTypeId, string nameOnAccount, Guid modifiedBy);
     Task<byte[]?> GetEncryptedAccountNumberAsync(Guid contactId);
     Task<IEnumerable<(Guid ContactId, string AccountNumber)>> GetClearAccountNumbersAsync(Guid organizationId);
     Task ClearBankInformationAsync(Guid contactId, Guid modifiedBy);
@@ -31,5 +32,12 @@ public interface IContactRepository
     Task<ContactCard> CreateContactCardAsync(ContactCard contactCard, byte[]? encryptedCardNumber);
     Task<ContactCard> UpdateContactCardByIdAsync(ContactCard contactCard, byte[]? encryptedCardNumber);
     Task DeleteContactCardByIdAsync(int contactCardId, Guid organizationId, int officeId);
+    #endregion
+
+    #region ContactBanks
+    Task<ContactBank?> GetContactBankByIdAsync(int contactBankId, Guid organizationId, int officeId);
+    Task<ContactBank> CreateContactBankAsync(ContactBank contactBank, byte[]? encryptedAccountNumber);
+    Task<ContactBank> UpdateContactBankByIdAsync(ContactBank contactBank, byte[]? encryptedAccountNumber);
+    Task DeleteContactBankByIdAsync(int contactBankId, Guid organizationId, int officeId);
     #endregion
 }

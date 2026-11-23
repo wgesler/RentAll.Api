@@ -31,6 +31,8 @@ namespace RentAll.Api.Controllers
         private readonly IUserRepository _userRepository;
         private readonly SendGridSettings _sendGridSettings;
         private readonly StorageSettings _storageSettings;
+        private readonly NumberSettings _numberSettings;
+        private readonly IEncryptionService _encryptionService;
         private readonly ILogger<ReservationController> _logger;
 
         public ReservationController(
@@ -51,6 +53,8 @@ namespace RentAll.Api.Controllers
             IUserRepository userRepository,
             IOptions<SendGridSettings> sendGridSettings,
             IOptions<StorageSettings> storageSettings,
+            IOptions<NumberSettings> numberSettings,
+            IEncryptionService encryptionService,
             ILogger<ReservationController> logger)
         {
             _organizationManager = organizationManager;
@@ -70,6 +74,8 @@ namespace RentAll.Api.Controllers
             _userRepository = userRepository;
             _sendGridSettings = sendGridSettings?.Value ?? throw new ArgumentNullException(nameof(sendGridSettings));
             _storageSettings = storageSettings?.Value ?? throw new ArgumentNullException(nameof(storageSettings));
+            _numberSettings = numberSettings?.Value ?? throw new ArgumentNullException(nameof(numberSettings));
+            _encryptionService = encryptionService;
             _logger = logger;
         }
     }

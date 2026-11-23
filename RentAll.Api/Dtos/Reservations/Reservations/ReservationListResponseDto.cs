@@ -20,6 +20,7 @@ public class ReservationListResponseDto
     public decimal DailyRate { get; set; }
     public decimal BillingRate { get; set; }
     public int BillingTypeId { get; set; }
+    public int BillingMethodId { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
@@ -72,6 +73,7 @@ public class ReservationListResponseDto
         DailyRate = reservationList.DailyRate;
         BillingRate = reservationList.BillingRate;
         BillingTypeId = reservationList.BillingTypeId;
+        BillingMethodId = reservationList.BillingMethodId;
         ArrivalDate = reservationList.ArrivalDate;
         DepartureDate = reservationList.DepartureDate;
         ReservationTypeId = (int)reservationList.ReservationType;

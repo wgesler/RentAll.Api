@@ -211,6 +211,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DailyRate = e.DailyRate,
                 BillingRate = e.BillingRate,
                 BillingTypeId = e.BillingTypeId,
+                BillingMethodId = e.BillingMethodId,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 ReservationType = (ReservationType)e.ReservationTypeId,

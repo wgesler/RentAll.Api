@@ -134,7 +134,9 @@ builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
-builder.Services.AddHttpClient(nameof(NumberService));
+// Every EasyPay request/response is logged in full (see EasyPayHttpLoggingHandler).
+builder.Services.AddTransient<EasyPayHttpLoggingHandler>();
+builder.Services.AddHttpClient(nameof(NumberService)).AddHttpMessageHandler<EasyPayHttpLoggingHandler>();
 builder.Services.AddScoped<INumberService, NumberService>();
 builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
 builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();

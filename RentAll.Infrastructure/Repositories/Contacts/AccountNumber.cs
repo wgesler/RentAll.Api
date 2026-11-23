@@ -17,6 +17,22 @@ public partial class ContactRepository
         });
     }
 
+    public async Task SaveBankInformationAsync(Guid contactId, string bankName, string routingNumber, byte[] encryptedAccountNumber, string lastFour, int bankAccountTypeId, string nameOnAccount, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Organization.Contact_SaveBankInformation", new
+        {
+            ContactId = contactId,
+            BankName = bankName,
+            RoutingNumber = routingNumber,
+            AccountNumberEncrypted = encryptedAccountNumber,
+            AccountNumberLastFour = lastFour,
+            BankAccountTypeId = bankAccountTypeId,
+            NameOnAccount = nameOnAccount,
+            ModifiedBy = modifiedBy
+        });
+    }
+
     public async Task<byte[]?> GetEncryptedAccountNumberAsync(Guid contactId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

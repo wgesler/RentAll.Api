@@ -9,15 +9,19 @@ public partial class ReservationController
     [HttpPost("{reservationId:guid}/payment-link")]
     public async Task<IActionResult> CreateReservationPaymentLink(Guid reservationId)
     {
-        if (reservationId == Guid.Empty)
-            return BadRequest("ReservationId is required");
+        var request = new ReservationPaymentLinkRequestDto(reservationId);
+        var (isValid, errorMessage) = request.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage);
 
         int? officeId = null;
         try
         {
             var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, CurrentOrganizationId);
-            officeId = reservation?.OfficeId;
-            var paymentUrl = await CreatePaymentUrlForReservationAsync(reservationId, HttpContext.RequestAborted);
+            if (reservation == null)
+                return NotFound("Reservation not found");
+            officeId = reservation.OfficeId;
+            var (paymentUrl, _) = await CreatePayRequestUrlAsync(reservation, CurrentUser);
             return Ok(new ReservationPaymentLinkResponseDto(paymentUrl));
         }
         catch (InvalidOperationException ex)
@@ -35,8 +39,10 @@ public partial class ReservationController
     [HttpPost("{reservationId:guid}/payment-request-email")]
     public async Task<IActionResult> SendReservationPaymentRequestEmail(Guid reservationId)
     {
-        if (reservationId == Guid.Empty)
-            return BadRequest("ReservationId is required");
+        var request = new ReservationPaymentLinkRequestDto(reservationId);
+        var (isValid, errorMessage) = request.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage);
 
         Reservation? reservation = null;
         try
@@ -70,7 +76,7 @@ public partial class ReservationController
                 return BadRequest("The tenant does not have an email address.");
 
             var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, reservation.OfficeId);
-            var paymentUrl = await CreatePaymentUrlForReservationAsync(reservationId, HttpContext.RequestAborted);
+            var (paymentUrl, validationToken) = await CreatePayRequestUrlAsync(reservation, CurrentUser);
             var payerName = PayerName(contact, reservation);
             var toName = string.Join(' ', new[] { payerName.First, payerName.Last }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
             if (string.IsNullOrWhiteSpace(toName))
@@ -103,6 +109,7 @@ public partial class ReservationController
                     ["displayName"] = organization.DisplayName?.Trim() ?? string.Empty,
                     ["reservationCode"] = referenceNo.Trim(),
                     ["paymentUrl"] = paymentUrl,
+                    ["validationToken"] = validationToken,
                     ["accountingPhone"] = FormatPhone(accountingOffice?.Phone),
                     ["accountingOfficeAddressSingleLine"] = address,
                     ["logoUrl"] = StoragePathBuilder.PublicOfficeLogoUrl(
@@ -137,37 +144,148 @@ public partial class ReservationController
         }
     }
 
-    private async Task<string> CreatePaymentUrlForReservationAsync(Guid reservationId, CancellationToken cancellationToken)
-    {
-        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, CurrentOrganizationId)
-            ?? throw new InvalidOperationException("Reservation not found");
+    /// <summary>How long an emailed payment link stays usable.</summary>
+    private static readonly TimeSpan PaymentLinkLifetime = TimeSpan.FromDays(3);
 
-        var office = await _organizationRepository.GetOfficeByIdAsync(reservation.OfficeId, CurrentOrganizationId);
+    /// <summary>
+    /// Creates a payment link (Accounting.PaymentLink) for the reservation and returns the address of the organization's
+    /// pay-request page with its token, plus the token itself. Nothing is sent to EasyPay yet: the page asks for a fresh form each time it opens.
+    /// </summary>
+    private async Task<(string Url, string Token)> CreatePayRequestUrlAsync(Reservation reservation, Guid createdBy)
+    {
+        var pages = await ResolvePaymentPagesAsync(reservation.OrganizationId, reservation.OfficeId);
+        var link = await _accountingRepository.AddPaymentLinkAsync(new PaymentLink
+        {
+            Token = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24)).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
+            OrganizationId = reservation.OrganizationId,
+            OfficeId = reservation.OfficeId,
+            ReservationId = reservation.ReservationId,
+            ExpiresOn = DateTimeOffset.UtcNow.Add(PaymentLinkLifetime),
+            CreatedBy = createdBy
+        });
+        return (pages.RequestUrl + "?token=" + Uri.EscapeDataString(link.Token), link.Token);
+    }
+
+    /// <summary>
+    /// Emails the tenant the Payment Received template once their card is saved through a payment link. A missing template
+    /// or a failed send goes to the Application Log and never fails the card save.
+    /// </summary>
+    private async Task TrySendPaymentReceivedEmailAsync(PaymentLink link, Reservation reservation, Organization organization)
+    {
+        try
+        {
+            var storedTemplate = await _emailRepository.GetEmailTemplateByNameAsync(reservation.OrganizationId, reservation.OfficeId, EmailTemplateNames.PaymentReceived);
+            var templateId = storedTemplate?.TemplateId?.Trim();
+            if (string.IsNullOrWhiteSpace(templateId))
+                throw new InvalidOperationException("No Payment Received template is set. Add its SendGrid template ID in Settings > Email > SendGrid Templates.");
+
+            var office = await _organizationRepository.GetOfficeByIdAsync(reservation.OfficeId, reservation.OrganizationId);
+            var referenceNo = office?.UseExternalRefNo == true ? reservation.ExternalRefNo : reservation.ReservationCode;
+            var contactId = reservation.ContactIds.FirstOrDefault();
+            var contact = contactId == Guid.Empty ? null : await _contactRepository.GetContactByIdAsync(contactId);
+            if (contact != null && contact.OrganizationId != reservation.OrganizationId)
+                contact = null;
+
+            var toEmail = contact?.Email?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(toEmail))
+                throw new InvalidOperationException("The tenant does not have an email address, so the Payment Received email was not sent.");
+
+            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(reservation.OrganizationId, reservation.OfficeId);
+            var payerName = PayerName(contact, reservation);
+            var toName = string.Join(' ', new[] { payerName.First, payerName.Last }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim();
+            if (string.IsNullOrWhiteSpace(toName))
+                toName = (reservation.TenantName ?? reservation.ContactName ?? toEmail).Trim();
+            var salutationName = toName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? toName;
+
+            var email = new Email
+            {
+                OrganizationId = reservation.OrganizationId,
+                OfficeId = reservation.OfficeId,
+                OfficeName = office?.Name,
+                PropertyId = reservation.PropertyId,
+                ReservationId = reservation.ReservationId,
+                FromRecipient = EmailAddress.Create(_sendGridSettings.FromEmail, _sendGridSettings.FromName),
+                ToRecipients = [EmailAddress.Create(toEmail, toName)],
+                Subject = "Payment Information Received",
+                PlainTextContent = string.Empty,
+                HtmlContent = $"Payment received sent with SendGrid template {templateId}.",
+                TemplateId = templateId,
+                TemplateData = new Dictionary<string, object?>
+                {
+                    ["salutationName"] = salutationName,
+                    ["companyName"] = organization.Name ?? string.Empty,
+                    ["companyOffice"] = string.Join(' ', new[] { organization.Name, office?.Name }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())),
+                    ["displayName"] = organization.DisplayName?.Trim() ?? string.Empty,
+                    ["reservationCode"] = referenceNo?.Trim() ?? string.Empty,
+                    ["validationToken"] = link.Token,
+                    ["accountingPhone"] = FormatPhone(accountingOffice?.Phone),
+                    ["accountingOfficeAddressSingleLine"] = AccountingOfficeAddress(accountingOffice),
+                    ["logoUrl"] = StoragePathBuilder.PublicOfficeLogoUrl(_storageSettings.AzureBlobBaseUrl, reservation.OrganizationId, office?.Name)
+                },
+                EmailType = EmailType.PaymentReceived,
+                EmailStatus = EmailStatus.Attempting,
+                CreatedBy = link.CreatedBy
+            };
+
+            var result = await _emailManager.SendEmail(organization.GetSendGridKeyVaultSecretName(), email);
+            if (result.EmailStatus == EmailStatus.Failed)
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.LastError) ? "Payment Received email failed." : result.LastError);
+        }
+        catch (Exception ex)
+        {
+            LogApplicationError(ex, "SendPaymentReceivedEmail", reservation.OfficeId);
+        }
+    }
+
+    /// <summary>
+    /// The organization's pay-request and pay-response pages: the office's row, the organization's row, or RentAll's own
+    /// (system default). Relative URLs are RentAll pages, resolved against NumberSettings:PaymentPagesBaseUrl.
+    /// </summary>
+    private async Task<(string RequestUrl, string ResponseUrl)> ResolvePaymentPagesAsync(Guid organizationId, int officeId)
+    {
+        var page = await _accountingRepository.GetPaymentPageByOfficeIdAsync(organizationId, officeId)
+            ?? throw new InvalidOperationException("No payment pages are set up (Accounting.PaymentPage has no system default).");
+
+        string Resolve(string url)
+        {
+            url = url.Trim();
+            if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                return url.TrimEnd('/');
+            var baseUrl = _numberSettings.PaymentPagesBaseUrl?.Trim().TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(baseUrl))
+                throw new InvalidOperationException("NumberSettings:PaymentPagesBaseUrl is not set, so RentAll's payment pages have no address.");
+            return baseUrl + "/" + url.TrimStart('/').TrimEnd('/');
+        }
+
+        return (Resolve(page.RequestPageUrl), Resolve(page.ResponsePageUrl));
+    }
+
+    /// <summary>
+    /// Starts an EasyPay card form for the reservation: $0 today plus a subscription block (the only way EasyPay's PFS
+    /// form creates a saved card); the subscription is put on hold as soon as the consent comes back. The payer is
+    /// returned to redirectUrl with ?TXID=..&amp;CID=.. added.
+    /// </summary>
+    private async Task<string> CreateEasyPayCardFormUrlAsync(Organization organization, Reservation reservation, string redirectUrl, CancellationToken cancellationToken)
+    {
+        var office = await _organizationRepository.GetOfficeByIdAsync(reservation.OfficeId, reservation.OrganizationId);
         var referenceNo = office?.UseExternalRefNo == true ? reservation.ExternalRefNo : reservation.ReservationCode;
         if (string.IsNullOrWhiteSpace(referenceNo))
             throw new InvalidOperationException(office?.UseExternalRefNo == true ? "This reservation does not have an external reference number." : "Reservation code is required.");
 
-        var organization = await _organizationRepository.GetOrganizationByIdAsync(CurrentOrganizationId)
-            ?? throw new InvalidOperationException("Organization not found");
-
         var contactId = reservation.ContactIds.FirstOrDefault();
         var contact = contactId == Guid.Empty ? null : await _contactRepository.GetContactByIdAsync(contactId);
-        if (contact != null && contact.OrganizationId != CurrentOrganizationId)
+        if (contact != null && contact.OrganizationId != reservation.OrganizationId)
             contact = null;
 
         var payerName = PayerName(contact, reservation);
-        var amount = await GetUnpaidInvoiceAmountAsync(reservation);
-        if (amount <= 0)
-            amount = 20m;
-
         var payForm = new NumberPayForm
         {
             OrganizationId = reservation.OrganizationId,
             OfficeId = reservation.OfficeId,
-            RedirectUrl = organization.Website?.Trim(),
+            RedirectUrl = redirectUrl,
             ReferenceId = referenceNo.Trim(),
             ReferenceGuid = reservation.ReservationId,
-            Amount = amount,
+            Amount = 0,
             FirstName = payerName.First,
             LastName = payerName.Last,
             Email = contact?.Email?.Trim() ?? string.Empty,
@@ -175,10 +293,12 @@ public partial class ReservationController
             StreetAddress = contact?.Address1?.Trim() ?? string.Empty,
             City = contact?.City?.Trim() ?? string.Empty,
             State = contact?.State?.Trim() ?? string.Empty,
-            Zip = contact?.Zip?.Trim() ?? string.Empty
+            Zip = contact?.Zip?.Trim() ?? string.Empty,
+            // Never bills: held as soon as the consent arrives. A real amount is required; $0 makes the form do nothing.
+            Subscription = new NumberSubscription { Amount = 20m, Period = "WEEKLY", FirstPayDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7)) }
         };
         return await WithNumberSessionAsync(organization, reservation.OfficeId,
-            session => _numberService.CreatePayFormUrlAsync(session, payForm, cancellationToken), cancellationToken);
+            session => _numberService.CreatePfsFormUrlAsync(session, payForm, cancellationToken), cancellationToken);
     }
 
     /// <summary>

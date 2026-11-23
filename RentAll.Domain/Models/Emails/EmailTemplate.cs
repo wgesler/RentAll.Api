@@ -14,11 +14,13 @@ public class EmailTemplate
 public static class EmailTemplateNames
 {
     public const string PaymentRequest = "PaymentRequest";
+    public const string PaymentReceived = "PaymentReceived";
 
     /// <summary>Every name the settings screen offers, with its display label.</summary>
     public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        [PaymentRequest] = "Payment Request"
+        [PaymentRequest] = "Payment Request",
+        [PaymentReceived] = "Payment Received"
     };
 
     public static bool IsKnown(string? emailName) => !string.IsNullOrWhiteSpace(emailName) && All.ContainsKey(emailName.Trim());

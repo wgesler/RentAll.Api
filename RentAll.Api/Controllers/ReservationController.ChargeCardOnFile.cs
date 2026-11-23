@@ -12,12 +12,14 @@ public partial class ReservationController
     [HttpPost("{reservationId:guid}/charge-card-on-file")]
     public async Task<IActionResult> ChargeCardOnFile(Guid reservationId, [FromBody] ChargeCardOnFileRequestDto dto)
     {
-        if (reservationId == Guid.Empty)
-            return BadRequest("ReservationId is required");
-        if (dto == null || dto.Amount <= 0)
-            return BadRequest("Amount must be greater than zero.");
+        if (dto == null)
+            return BadRequest("Charge data is required");
+        dto.ReservationId = reservationId;
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage);
 
-        var amount = decimal.Round(dto.Amount, 2, MidpointRounding.AwayFromZero);
+        var amount = dto.Amount;
         int? officeId = null;
         try
         {
@@ -32,7 +34,7 @@ public partial class ReservationController
 
             var (consentId, cardLabel) = await ResolveCardOnFileAsync(reservation);
             if (consentId is not > 0)
-                return BadRequest("This reservation has no card on file from Number.");
+                return BadRequest("This reservation has no card on file from EasyPay.");
 
             // Check everything needed to record the payment before charging, so a card is never
             // charged for money that can't be applied.
@@ -59,43 +61,27 @@ public partial class ReservationController
             {
                 _logger.LogError("[NumberCharge] Step=Declined ReservationId={ReservationId} ConsentID={ConsentId} Amount={Amount} TxID={TxId} ErrCode={ErrCode} Message={Message}",
                     reservation.ReservationId, consentId, amount, result.TxId, result.ErrCode, result.Message);
-                return BadRequest(new ChargeCardOnFileResponseDto
-                {
-                    Approved = false,
-                    TransactionId = result.TxId,
-                    RequestedAmount = amount,
-                    Message = result.Message ?? "The card was declined."
-                });
+                // A decline is a normal answer, not a failed request: the dialog shows EasyPay's code and message.
+                return Ok(new ChargeCardOnFileResponseDto(result, amount, 0, cardLabel));
             }
 
             // Number says the approved amount can differ from the requested one; trust what it approved.
             var approved = result.ApprovedTotal > 0 ? result.ApprovedTotal
                 : result.AuthorizedAmount > 0 ? result.AuthorizedAmount
                 : result.IsPartialApproval ? 0 : amount;
-            var response = new ChargeCardOnFileResponseDto
-            {
-                Approved = true,
-                TransactionId = result.TxId,
-                RequestedAmount = amount,
-                ApprovedAmount = approved,
-                IsPartialApproval = result.IsPartialApproval || (approved > 0 && approved < amount),
-                Message = result.Message
-            };
-
             if (approved <= 0)
             {
                 _logger.LogError("[NumberCharge] Step=NotRecorded ReservationId={ReservationId} TxID={TxId} Reason=ApprovedAmountUnclear", reservation.ReservationId, result.TxId);
-                response.Message = $"Number approved transaction {result.TxId} but did not report the approved amount. Record the payment by hand.";
-                return Ok(response);
+                return Ok(new ChargeCardOnFileResponseDto(result, amount, approved, cardLabel,
+                    message: $"EasyPay approved transaction {result.TxId} but did not report the approved amount. Record the payment by hand."));
             }
 
+            var isPartialApproval = result.IsPartialApproval || approved < amount;
             var payment = await RecordNumberPaymentAsync(reservation, new NumberPaymentToRecord(
-                result.TxId, approved, amount, response.IsPartialApproval, cardLabel, result.TxnCode,
-                "Number card on file charge", CurrentUser));
-            response.PaymentId = payment?.PaymentId;
-            response.PaymentCode = payment?.PaymentCode;
-            if (payment == null)
-                response.Message = $"Number approved transaction {result.TxId} for {approved:0.00}, but the payment could not be recorded. Record it by hand.";
+                result.TxId, approved, amount, isPartialApproval, cardLabel, result.TxnCode,
+                "EasyPay card on file charge", CurrentUser));
+            var response = new ChargeCardOnFileResponseDto(result, amount, approved, cardLabel, payment,
+                payment == null ? $"EasyPay approved transaction {result.TxId} for {approved:0.00}, but the payment could not be recorded. Record it by hand." : null);
 
             _logger.LogInformation("[NumberCharge] Step=Charged ReservationId={ReservationId} TxID={TxId} Requested={Requested} Approved={Approved} PaymentId={PaymentId}",
                 reservation.ReservationId, result.TxId, amount, approved, payment?.PaymentId);

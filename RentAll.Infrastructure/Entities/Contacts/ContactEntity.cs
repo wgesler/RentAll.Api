@@ -52,6 +52,8 @@ public class ContactEntity
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
     public string? AccountNumberLastFour { get; set; }
+    public int? BankAccountTypeId { get; set; }
+    public string? NameOnAccount { get; set; }
     public int? ContactCardId { get; set; }
     public bool IsOwnerReady { get; set; }
     public int? OwnerLeadId { get; set; }

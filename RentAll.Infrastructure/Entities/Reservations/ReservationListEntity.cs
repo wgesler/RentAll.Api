@@ -22,6 +22,7 @@ public class ReservationListEntity
     public decimal DailyRate { get; set; }
     public decimal BillingRate { get; set; }
     public int BillingTypeId { get; set; }
+    public int BillingMethodId { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
