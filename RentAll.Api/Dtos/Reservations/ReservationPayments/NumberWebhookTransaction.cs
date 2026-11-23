@@ -1,6 +1,6 @@
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
-/// <summary>The transaction inside an EasyPay PFS webhook. Amount is in cents.</summary>
+/// <summary>The transaction inside an Number PFS webhook. Amount is in cents.</summary>
 public class NumberWebhookTransaction
 {
     public long Id { get; set; }

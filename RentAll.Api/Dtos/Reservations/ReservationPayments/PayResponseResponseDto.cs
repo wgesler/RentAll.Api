@@ -2,7 +2,7 @@ using RentAll.Domain.Models.Accounting;
 
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
-/// <summary>What the public pay-response page shows after EasyPay returns: whether the card was saved, and which card.</summary>
+/// <summary>What the public pay-response page shows after Number returns: whether the card was saved, and which card.</summary>
 public class PayResponseResponseDto
 {
     public bool Saved { get; set; }
@@ -26,7 +26,7 @@ public class PayResponseResponseDto
         Website = website;
     }
 
-    /// <summary>EasyPay's card code (VI, MC, DS, AX) as a name the payer recognizes.</summary>
+    /// <summary>Number's card code (VI, MC, DS, AX) as a name the payer recognizes.</summary>
     private static string? CardTypeLabel(string? numberCode)
     {
         var value = new string((numberCode ?? string.Empty).Where(char.IsLetter).ToArray()).ToUpperInvariant();

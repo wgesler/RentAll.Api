@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
 /// <summary>
-/// What EasyPay (Number) posts to our PostURL webhook. Two shapes arrive: the PayForm post (flat fields) and the
+/// What Number posts to our PostURL webhook. Two shapes arrive: the PayForm post (flat fields) and the
 /// PFS webhook (type, nested transaction/subscription); ApplyWebhookShape folds the second into the first.
 /// </summary>
 public class NumberPostDto

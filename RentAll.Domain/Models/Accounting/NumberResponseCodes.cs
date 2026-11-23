@@ -1,7 +1,7 @@
 namespace RentAll.Domain.Models.Accounting;
 
 /// <summary>
-/// Plain-language meanings for EasyPay (Number) response codes, so staff understand a decline or error.
+/// Plain-language meanings for Number response codes, so staff understand a decline or error.
 /// Card decline codes (ErrCode under 1000) come from Number's processor tables:
 /// https://docs.number.tech/documentation/testing/first-data-testing.md (Response codes).
 /// API errors (4-5 digits, e.g. 6126) are not in Number's docs; these are the ones we have seen and what they meant.
@@ -43,7 +43,7 @@ public static class NumberResponseCodes
         [913] = ("Duplicate transaction.", "Check whether the charge already went through before retrying."),
         [963] = ("The payment network is unavailable.", "Try again later."),
 
-        // EasyPay API errors seen in testing.
+        // Number API errors seen in testing.
         [5030] = ("The EasyPay session expired.", "Try again; RentAll signs in again automatically."),
         [5050] = ("The EasyPay session was rejected (the server's address changed).", "Try again; RentAll signs in again automatically."),
         [6046] = ("EasyPay could not find this saved card as an annual consent.", "This card was saved as a subscription consent; see below."),
@@ -51,7 +51,7 @@ public static class NumberResponseCodes
         [7123] = ("EasyPay rejected a date in the request.", "Contact support."),
     };
 
-    /// <summary>The meaning and suggested action for an EasyPay ErrCode, or null when we don't know it.</summary>
+    /// <summary>The meaning and suggested action for an Number ErrCode, or null when we don't know it.</summary>
     public static (string Meaning, string? Action)? Describe(int errCode)
     {
         return Codes.TryGetValue(errCode, out var entry) ? entry : null;

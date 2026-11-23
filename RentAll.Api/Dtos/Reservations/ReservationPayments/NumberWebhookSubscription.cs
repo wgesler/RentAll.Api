@@ -1,6 +1,6 @@
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
-/// <summary>The subscription inside an EasyPay PFS webhook (SUBSCRIP_CREATE); its Id is the consent id.</summary>
+/// <summary>The subscription inside an Number PFS webhook (SUBSCRIP_CREATE); its Id is the consent id.</summary>
 public class NumberWebhookSubscription
 {
     public long Id { get; set; }

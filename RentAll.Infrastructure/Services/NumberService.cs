@@ -62,7 +62,7 @@ public class NumberService : INumberService
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Number Authenticate failed before a response.");
+            _logger.LogError(ex, "[EasyPay AuthenticateNoResponse]");
             throw new InvalidOperationException("Number could not be reached.", ex);
         }
 
@@ -72,13 +72,13 @@ public class NumberService : INumberService
 
         if (!result.FunctionOk)
         {
-            _logger.LogError("Number Authenticate FunctionOk=false ErrCode={ErrCode} ErrMsg={ErrMsg}", result.ErrCode, result.ErrMsg);
+            _logger.LogError("[EasyPay AuthenticateRejected] ErrCode={ErrCode} ErrMsg={ErrMsg}", result.ErrCode, result.ErrMsg);
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.ErrMsg) ? $"Number Authenticate failed ({result.ErrCode})." : result.ErrMsg);
         }
 
         if (!result.AuthSuccess || string.IsNullOrWhiteSpace(result.SessKey))
         {
-            _logger.LogError("Number Authenticate declined. RespMsg={RespMsg}", result.RespMsg);
+            _logger.LogError("[EasyPay AuthenticateDeclined] RespMsg={RespMsg}", result.RespMsg);
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.RespMsg) ? "Number Authenticate was declined." : result.RespMsg);
         }
 
@@ -123,7 +123,6 @@ public class NumberService : INumberService
             throw new InvalidOperationException("Number session key is missing.");
 
         var requestJson = JsonSerializer.Serialize(initRequest, JsonOptions);
-        _logger.LogError("[NumberPayFormTrace] Step=InitFormRequest Url={Url} MerchId={MerchId} HasSessKey={HasSessKey} Body={Body}", url, session.MerchId, !string.IsNullOrWhiteSpace(session.SessKey), requestJson);
 
         InitFormResponse? body;
         try
@@ -139,24 +138,24 @@ public class NumberService : INumberService
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "[NumberPayFormTrace] Step=InitFormTransportFailed Body={Body}", requestJson);
+            _logger.LogError(ex, "[EasyPay CreateCardFormNoResponse] Body={Body}", requestJson);
             throw new InvalidOperationException("Number could not be reached.", ex);
         }
 
         var result = body?.PaymentInitResult;
         if (result == null)
         {
-            _logger.LogError("[NumberPayFormTrace] Step=InitFormEmptyResponse Body={Body}", requestJson);
+            _logger.LogError("[EasyPay CreateCardFormEmptyResponse] Body={Body}", requestJson);
             throw new InvalidOperationException("Number PayForm Init returned an empty response.");
         }
         if (NumberSessionExpiredException.IsSessionError(result.ErrCode))
         {
-            _logger.LogError("[NumberPayFormTrace] Step=InitFormSessionRejected ErrCode={ErrCode} ErrMsg={ErrMsg}", result.ErrCode, result.ErrMsg);
+            _logger.LogError("[EasyPay CreateCardFormSessionRejected] ErrCode={ErrCode} ErrMsg={ErrMsg}", result.ErrCode, result.ErrMsg);
             throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
         }
         if (!result.FunctionOk || string.IsNullOrWhiteSpace(result.PaymentUrl))
         {
-            _logger.LogError("[NumberPayFormTrace] Step=InitFormRejected FunctionOk={FunctionOk} ErrCode={ErrCode} ErrMsg={ErrMsg} RespMsg={RespMsg} Body={Body}", result.FunctionOk, result.ErrCode, result.ErrMsg, result.RespMsg, requestJson);
+            _logger.LogError("[EasyPay CreateCardFormRejected] FunctionOk={FunctionOk} ErrCode={ErrCode} ErrMsg={ErrMsg} RespMsg={RespMsg} Body={Body}", result.FunctionOk, result.ErrCode, result.ErrMsg, result.RespMsg, requestJson);
             var message = string.IsNullOrWhiteSpace(result.ErrMsg) ? result.RespMsg : result.ErrMsg;
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(message) ? $"Number PayForm Init failed ({result.ErrCode})." : message);
         }
@@ -219,19 +218,19 @@ public class NumberService : INumberService
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Number Transaction_FullDetail failed before a response. TxID={TxId}", transactionId);
+            _logger.LogError(ex, "[EasyPay GetTransactionNoResponse] TxID={TxId}", transactionId);
             throw new InvalidOperationException("Number could not be reached.", ex);
         }
 
         var result = body?.Transaction_FullDetailResult;
         if (result != null && NumberSessionExpiredException.IsSessionError(result.ErrCode))
         {
-            _logger.LogError("Number Transaction_FullDetail rejected the session key. TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result.ErrCode, result.ErrMsg);
+            _logger.LogError("[EasyPay GetTransactionSessionRejected] TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result.ErrCode, result.ErrMsg);
             throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
         }
         if (result == null || !result.FunctionOk || result.Transaction == null)
         {
-            _logger.LogError("Number Transaction_FullDetail found no transaction. TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result?.ErrCode, result?.ErrMsg);
+            _logger.LogError("[EasyPay GetTransactionNotFound] TxID={TxId} ErrCode={ErrCode} ErrMsg={ErrMsg}", transactionId, result?.ErrCode, result?.ErrMsg);
             return null;
         }
 
@@ -266,7 +265,7 @@ public class NumberService : INumberService
         if (result == null || !result.FunctionOk || result.ConsentAnnual == null)
         {
             // Subscription (Type S) consents from the PFS form aren't annual consents (ErrCode 6046); look them up in the general list.
-            _logger.LogError("Number ConsentAnnual_FullDetail found no consent; trying subscription consents. ConsentID={ConsentId} ErrCode={ErrCode} ErrMsg={ErrMsg}", consentId, result?.ErrCode, result?.ErrMsg);
+            _logger.LogWarning("[EasyPay GetConsentNotAnnual] Trying subscription consents. ConsentID={ConsentId} ErrCode={ErrCode} ErrMsg={ErrMsg}", consentId, result?.ErrCode, result?.ErrMsg);
             return await GetSubscriptionConsentAsync(session, consentId, cancellationToken);
         }
 
@@ -315,7 +314,7 @@ public class NumberService : INumberService
         if (NumberSessionExpiredException.IsSessionError(result.ErrCode))
             throw new NumberSessionExpiredException(result.ErrCode, result.ErrMsg);
 
-        _logger.LogInformation("Number ChargeStoredCard ConsentID={ConsentId} Requested={Requested} FunctionOk={FunctionOk} TxApproved={TxApproved} TxID={TxId} Approved={Approved} Authorized={Authorized} Partial={Partial} ErrCode={ErrCode} RespMsg={RespMsg}",
+        _logger.LogInformation("[EasyPay ChargeStoredCardResult] ConsentID={ConsentId} Requested={Requested} FunctionOk={FunctionOk} TxApproved={TxApproved} TxID={TxId} Approved={Approved} Authorized={Authorized} Partial={Partial} ErrCode={ErrCode} RespMsg={RespMsg}",
             charge.ConsentId, charge.Amount, result.FunctionOk, result.TxApproved, result.TxID, result.ApprovedAmounts?.TotalAmt, result.ResponseAuthorizedAmount, result.IsPartialApproval, result.ErrCode, result.RespMsg);
 
         return new NumberStoredCardChargeResult
@@ -346,7 +345,7 @@ public class NumberService : INumberService
         var body = await PostAsync<JsonElement>(session, ConsentGeneralQueryUrl, new { Query = "(G=4)" }, "ConsentGeneral_Query", cancellationToken);
         if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty("ConsentGeneral_QueryResult", out var result))
         {
-            _logger.LogError("Number ConsentGeneral_Query returned no result. ConsentID={ConsentId} Response={Response}", consentId, body.ToString());
+            _logger.LogError("[EasyPay FindSubscriptionConsentEmpty] ConsentID={ConsentId} Response={Response}", consentId, body.ToString());
             return null;
         }
         var errCode = result.TryGetProperty("ErrCode", out var e) && e.TryGetInt32(out var code) ? code : 0;
@@ -369,7 +368,7 @@ public class NumberService : INumberService
                 var tx = await PostAsync<JsonElement>(session, TransactionDetailUrl, new { TxID = authTxId }, "Transaction_FullDetail", cancellationToken);
                 cardType = FindText(tx, "CardType");
                 if (cardType == null)
-                    _logger.LogError("Number Transaction_FullDetail gave no card type for consent auth. ConsentID={ConsentId} AuthTxID={AuthTxId}", consentId, authTxId);
+                    _logger.LogError("[EasyPay GetTransactionNoCardType] ConsentID={ConsentId} AuthTxID={AuthTxId}", consentId, authTxId);
             }
 
             return new NumberConsent
@@ -386,7 +385,7 @@ public class NumberService : INumberService
                 LastName = Text("AcctHolderLastName")
             };
         }
-        _logger.LogError("Number ConsentGeneral_Query did not list subscription consent. ConsentID={ConsentId}", consentId);
+        _logger.LogError("[EasyPay FindSubscriptionConsentNotFound] ConsentID={ConsentId}", consentId);
         return null;
     }
 
@@ -544,7 +543,7 @@ public class NumberService : INumberService
             throw new NumberSessionExpiredException(errCode, result.TryGetProperty("ErrMsg", out var m) ? m.ToString() : null);
 
         var ok = result.ValueKind == JsonValueKind.Object && result.TryGetProperty("FunctionOk", out var f) && f.ValueKind == JsonValueKind.True;
-        _logger.LogError("[NumberPayment] Step=SubscriptionHold ConsentID={ConsentId} Ok={Ok} Response={Response}", consentId, ok, body.ToString());
+        _logger.Log(ok ? LogLevel.Warning : LogLevel.Error, "[EasyPay HoldSubscriptionResult] ConsentID={ConsentId} Ok={Ok} Response={Response}", consentId, ok, body.ToString());
         return ok;
     }
 
@@ -591,7 +590,7 @@ public class NumberService : INumberService
     {
         eVisible = "0600",
         eReadOnly = "0000",
-        eStyles = "4402", // EasyPay's dark "champ" theme with labels on top (0002 is the light theme)
+        eStyles = "4402", // Number's dark "champ" theme with labels on top (0002 is the light theme)
         eSubmission = "0221"
     };
 

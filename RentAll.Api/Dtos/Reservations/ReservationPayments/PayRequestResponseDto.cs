@@ -30,7 +30,7 @@ public class PayRequestResponseDto
         IsCompleted = link.CompletedOn != null;
         HasCardOnFile = reservation.NumberConsentId is > 0;
         CardAvailable = true;
-        // ACH Debit: entered on our page and saved with EasyPay's ACH/Combo (no debit).
+        // ACH Debit: entered on our page and saved with Number's ACH/Combo (no debit).
         BankAvailable = true;
     }
 }

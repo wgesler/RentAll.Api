@@ -4,7 +4,7 @@ namespace RentAll.Domain.Models;
 
 /// <summary>
 /// A contact's bank account (ACH). Entered on the contact screen, or by the tenant on the pay-request page, which also
-/// keeps EasyPay's (Number) consent, the reservation and when the tenant authorized debits.
+/// keeps Number's consent, the reservation and when the tenant authorized debits.
 /// </summary>
 public class ContactBank
 {

@@ -59,9 +59,9 @@ public partial class ReservationController
 
             if (!result.Approved)
             {
-                _logger.LogError("[NumberCharge] Step=Declined ReservationId={ReservationId} ConsentID={ConsentId} Amount={Amount} TxID={TxId} ErrCode={ErrCode} Message={Message}",
+                _logger.LogError("[EasyPay ChargeDeclined] ReservationId={ReservationId} ConsentID={ConsentId} Amount={Amount} TxID={TxId} ErrCode={ErrCode} Message={Message}",
                     reservation.ReservationId, consentId, amount, result.TxId, result.ErrCode, result.Message);
-                // A decline is a normal answer, not a failed request: the dialog shows EasyPay's code and message.
+                // A decline is a normal answer, not a failed request: the dialog shows Number's code and message.
                 return Ok(new ChargeCardOnFileResponseDto(result, amount, 0, cardLabel));
             }
 
@@ -71,7 +71,7 @@ public partial class ReservationController
                 : result.IsPartialApproval ? 0 : amount;
             if (approved <= 0)
             {
-                _logger.LogError("[NumberCharge] Step=NotRecorded ReservationId={ReservationId} TxID={TxId} Reason=ApprovedAmountUnclear", reservation.ReservationId, result.TxId);
+                _logger.LogError("[EasyPay ChargeNotRecorded] ReservationId={ReservationId} TxID={TxId} Reason=ApprovedAmountUnclear", reservation.ReservationId, result.TxId);
                 return Ok(new ChargeCardOnFileResponseDto(result, amount, approved, cardLabel,
                     message: $"EasyPay approved transaction {result.TxId} but did not report the approved amount. Record the payment by hand."));
             }
@@ -83,7 +83,7 @@ public partial class ReservationController
             var response = new ChargeCardOnFileResponseDto(result, amount, approved, cardLabel, payment,
                 payment == null ? $"EasyPay approved transaction {result.TxId} for {approved:0.00}, but the payment could not be recorded. Record it by hand." : null);
 
-            _logger.LogInformation("[NumberCharge] Step=Charged ReservationId={ReservationId} TxID={TxId} Requested={Requested} Approved={Approved} PaymentId={PaymentId}",
+            _logger.LogError("[EasyPay CardCharged] ReservationId={ReservationId} TxID={TxId} Requested={Requested} Approved={Approved} PaymentId={PaymentId}",
                 reservation.ReservationId, result.TxId, amount, approved, payment?.PaymentId);
             return Ok(response);
         }

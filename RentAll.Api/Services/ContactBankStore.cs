@@ -6,7 +6,7 @@ namespace RentAll.Api.Services;
 /// <summary>
 /// Saves contact bank accounts (Organization.ContactBank), linked from Contact.ContactBankId like ContactCard.
 /// The account number is always encrypted; a blank or masked number keeps the stored one. A new routing or account
-/// number drops the EasyPay consent, because it belonged to the old account.
+/// number drops the Number consent, because it belonged to the old account.
 /// </summary>
 public class ContactBankStore
 {

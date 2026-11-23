@@ -12,9 +12,9 @@ public class PayRequestAchResponseDto
     public string? NameOnAccount { get; set; }
     /// <summary>For the payer: what happened, in plain words.</summary>
     public string Message { get; set; } = string.Empty;
-    /// <summary>EasyPay's code and text when it refused, so staff can look it up in the log.</summary>
-    public int EasyPayCode { get; set; }
-    public string? EasyPayMessage { get; set; }
+    /// <summary>Number's code and text when it refused, so staff can look it up in the log.</summary>
+    public int NumberCode { get; set; }
+    public string? NumberMessage { get; set; }
 
     public PayRequestAchResponseDto(ContactBank saved)
     {
@@ -30,11 +30,11 @@ public class PayRequestAchResponseDto
     {
         Saved = false;
         ConsentId = result.ConsentId;
-        EasyPayCode = result.ErrCode;
-        EasyPayMessage = NumberResponseCodes.Readable(result.ErrMsg) ?? NumberResponseCodes.Readable(result.RespMsg);
-        Message = string.IsNullOrWhiteSpace(EasyPayMessage)
+        NumberCode = result.ErrCode;
+        NumberMessage = NumberResponseCodes.Readable(result.ErrMsg) ?? NumberResponseCodes.Readable(result.RespMsg);
+        Message = string.IsNullOrWhiteSpace(NumberMessage)
             ? "Your bank account could not be saved. Please check the details and try again."
-            : $"Your bank account could not be saved: {EasyPayMessage}";
+            : $"Your bank account could not be saved: {NumberMessage}";
     }
 
     public static string AccountTypeLabel(BankAccountType type) => type switch

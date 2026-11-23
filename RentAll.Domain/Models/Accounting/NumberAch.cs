@@ -1,6 +1,6 @@
 namespace RentAll.Domain.Models.Accounting;
 
-/// <summary>ACH account types as EasyPay (Number) numbers them.</summary>
+/// <summary>ACH account types as Number numbers them.</summary>
 public enum NumberAchAccountType
 {
     PersonalChecking = 1,
@@ -10,8 +10,8 @@ public enum NumberAchAccountType
 }
 
 /// <summary>
-/// A bank account to save as an ACH consent with EasyPay's ACH/Combo at $0 (no debit). The full numbers are passed
-/// straight through to EasyPay and never stored or logged by RentAll.
+/// A bank account to save as an ACH consent with Number's ACH/Combo at $0 (no debit). The full numbers are passed
+/// straight through to Number and never stored or logged by RentAll.
 /// </summary>
 public class NumberAchConsentRequest
 {
@@ -31,7 +31,7 @@ public class NumberAchConsentRequest
     public string? RpGuid { get; set; }
 }
 
-/// <summary>EasyPay's answer to ACH/Combo.</summary>
+/// <summary>Number's answer to ACH/Combo.</summary>
 public class NumberAchConsentResult
 {
     public bool FunctionOk { get; set; }
@@ -42,6 +42,6 @@ public class NumberAchConsentResult
     public string? ErrMsg { get; set; }
     public string? RespMsg { get; set; }
 
-    /// <summary>Saved: EasyPay created the consent.</summary>
+    /// <summary>Saved: Number created the consent.</summary>
     public bool Saved => FunctionOk && ConsentId > 0;
 }

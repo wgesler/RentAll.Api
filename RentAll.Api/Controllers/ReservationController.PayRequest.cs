@@ -37,7 +37,7 @@ public partial class ReservationController
         }
     }
 
-    /// <summary>Starts a fresh EasyPay card form for the pay-request page to show in its iFrame.</summary>
+    /// <summary>Starts a fresh Number card form for the pay-request page to show in its iFrame.</summary>
     [AllowAnonymous]
     [HttpPost("external/pay-request/{token}/card-form")]
     public async Task<IActionResult> CreatePayRequestCardForm(string token)
@@ -55,10 +55,10 @@ public partial class ReservationController
                 return error;
             officeId = reservation!.OfficeId;
 
-            // EasyPay returns the payer to the organization's pay-response page (inside the iFrame) with ?TXID=..&CID=..
+            // Number returns the payer to the organization's pay-response page (inside the iFrame) with ?TXID=..&CID=..
             var pages = await ResolvePaymentPagesAsync(reservation.OrganizationId, reservation.OfficeId);
             var redirectUrl = pages.ResponseUrl + "/" + Uri.EscapeDataString(link!.Token);
-            var formUrl = await CreateEasyPayCardFormUrlAsync(organization!, reservation, redirectUrl, HttpContext.RequestAborted);
+            var formUrl = await CreateNumberCardFormUrlAsync(organization!, reservation, redirectUrl, HttpContext.RequestAborted);
             return Ok(new PayRequestFormResponseDto(formUrl));
         }
         catch (InvalidOperationException ex)
@@ -74,7 +74,7 @@ public partial class ReservationController
     }
 
     /// <summary>
-    /// The pay-response page sends what EasyPay returned (?TXID=..&amp;CID=..). The consent is confirmed with EasyPay,
+    /// The pay-response page sends what Number returned (?TXID=..&amp;CID=..). The consent is confirmed with Number,
     /// saved to the reservation and the contact's card, and its subscription put on hold; then the link is marked done.
     /// </summary>
     [AllowAnonymous]
@@ -112,7 +112,7 @@ public partial class ReservationController
     }
 
     /// <summary>
-    /// ACH Debit: saves the tenant's bank account with EasyPay (ACH/Combo at $0, so nothing is debited) and keeps the
+    /// ACH Debit: saves the tenant's bank account with Number (ACH/Combo at $0, so nothing is debited) and keeps the
     /// returned ConsentID on the tenant contact's bank account (ContactBank), with the account number encrypted.
     /// </summary>
     [AllowAnonymous]
@@ -156,7 +156,7 @@ public partial class ReservationController
                 session => _numberService.CreateAchConsentAsync(session, ach, HttpContext.RequestAborted), HttpContext.RequestAborted);
             if (!result.Saved || result.ConsentId > int.MaxValue)
             {
-                _logger.LogError("[NumberAch] Step=NotSaved ReservationId={ReservationId} ErrCode={ErrCode} ErrMsg={ErrMsg} RespMsg={RespMsg}",
+                _logger.LogError("[EasyPay BankAccountNotSaved] ReservationId={ReservationId} ErrCode={ErrCode} ErrMsg={ErrMsg} RespMsg={RespMsg}",
                     reservation.ReservationId, result.ErrCode, result.ErrMsg, result.RespMsg);
                 return Ok(new PayRequestAchResponseDto(result));
             }
@@ -180,7 +180,7 @@ public partial class ReservationController
                 ? await _contactBankStore.SaveAsync(contact, bank, dto.AccountDigits, link!.CreatedBy)
                 : await _contactBankStore.UpsertAsync(reservation.OrganizationId, reservation.OfficeId, null, bank, dto.AccountDigits);
             await _accountingRepository.CompletePaymentLinkByTokenAsync(link!.Token);
-            _logger.LogError("[NumberAch] Step=Saved ReservationId={ReservationId} ConsentID={ConsentId} AccountLast4={AccountLast4}",
+            _logger.LogError("[EasyPay BankAccountSaved] ReservationId={ReservationId} ConsentID={ConsentId} AccountLast4={AccountLast4}",
                 reservation.ReservationId, saved.NumberConsentId, saved.LastFour);
             return Ok(new PayRequestAchResponseDto(saved));
         }
@@ -202,7 +202,7 @@ public partial class ReservationController
         var link = await _accountingRepository.GetPaymentLinkByTokenAsync(token);
         if (link == null)
             return (null, null, null, NotFound("This payment link is not valid."));
-        // The payer isn't signed in: tag this request's log rows (including [EasyPayLog]) with the link's organization so they show in its Application Log.
+        // The payer isn't signed in: tag this request's log rows (including the Number request and response rows) with the link's organization so they show in its Application Log.
         SetApplicationLogContext(link.OrganizationId, link.OfficeId);
         if (link.ExpiresOn < DateTimeOffset.UtcNow)
             return (link, null, null, StatusCode(StatusCodes.Status410Gone, "This payment link has expired. Please ask for a new one."));

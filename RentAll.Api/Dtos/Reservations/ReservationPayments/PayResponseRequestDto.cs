@@ -1,6 +1,6 @@
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
-/// <summary>What the pay-response page passes on from EasyPay's redirect: the link token, plus ?TXID=..&amp;CID=..</summary>
+/// <summary>What the pay-response page passes on from Number's redirect: the link token, plus ?TXID=..&amp;CID=..</summary>
 public class PayResponseRequestDto
 {
     public string Token { get; set; } = string.Empty;

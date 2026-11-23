@@ -149,7 +149,7 @@ public partial class ReservationController
 
     /// <summary>
     /// Creates a payment link (Accounting.PaymentLink) for the reservation and returns the address of the organization's
-    /// pay-request page with its token, plus the token itself. Nothing is sent to EasyPay yet: the page asks for a fresh form each time it opens.
+    /// pay-request page with its token, plus the token itself. Nothing is sent to Number yet: the page asks for a fresh form each time it opens.
     /// </summary>
     private async Task<(string Url, string Token)> CreatePayRequestUrlAsync(Reservation reservation, Guid createdBy)
     {
@@ -261,11 +261,11 @@ public partial class ReservationController
     }
 
     /// <summary>
-    /// Starts an EasyPay card form for the reservation: $0 today plus a subscription block (the only way EasyPay's PFS
+    /// Starts an Number card form for the reservation: $0 today plus a subscription block (the only way Number's PFS
     /// form creates a saved card); the subscription is put on hold as soon as the consent comes back. The payer is
     /// returned to redirectUrl with ?TXID=..&amp;CID=.. added.
     /// </summary>
-    private async Task<string> CreateEasyPayCardFormUrlAsync(Organization organization, Reservation reservation, string redirectUrl, CancellationToken cancellationToken)
+    private async Task<string> CreateNumberCardFormUrlAsync(Organization organization, Reservation reservation, string redirectUrl, CancellationToken cancellationToken)
     {
         var office = await _organizationRepository.GetOfficeByIdAsync(reservation.OfficeId, reservation.OrganizationId);
         var referenceNo = office?.UseExternalRefNo == true ? reservation.ExternalRefNo : reservation.ReservationCode;
@@ -315,7 +315,7 @@ public partial class ReservationController
         }
         catch (NumberSessionExpiredException ex)
         {
-            _logger.LogWarning("[NumberSession] Step=Rejected OfficeId={OfficeId} ErrCode={ErrCode}; authenticating again", officeId, ex.ErrCode);
+            _logger.LogWarning("[EasyPay SessionRejected] OfficeId={OfficeId} ErrCode={ErrCode}; authenticating again", officeId, ex.ErrCode);
             session = await GetStoredNumberSessionAsync(organization, officeId, forceRefresh: true, cancellationToken);
             return await call(session);
         }

@@ -59,7 +59,9 @@ public partial class ReservationController
                 continue;
             }
 
-            if (!item.Success)
+            if (item.Success)
+                await TryLogExternalReservationSavedAsync(context, item);
+            else
                 await TryLogExternalReservationSaveFailureAsync(context, item, StatusCodes.Status400BadRequest);
 
             response.Results.Add(item);
@@ -315,6 +317,29 @@ public partial class ReservationController
             return BadRequest("Invalid VendorId");
 
         return null;
+    }
+
+    /// <summary>One Property Uploads row per reservation a partner creates or updates, so every external save is visible by vendor.</summary>
+    private async Task TryLogExternalReservationSavedAsync(ExternalPropertyIntakeContext context, ExternalReservationBatchItemResultDto item)
+    {
+        var detail = $"{(item.Updated ? "Updated" : "Created")} reservation {item.ReservationCode} ExternalRefNo={item.ExternalRefNo}.";
+        try
+        {
+            await _externalPropertyUploadLogService.LogExternalApiAttemptAsync(new ExternalPropertyApiAttemptLog
+            {
+                OrganizationId = context.OrganizationId,
+                OfficeId = context.OfficeId,
+                VendorId = context.PartnerVendorId,
+                PropertyCode = item.PropertyCode,
+                EventType = item.Updated ? PropertyUploadLogEvents.ReservationUpdate : PropertyUploadLogEvents.ReservationCreate,
+                Operation = PropertyUploadLogOperations.CreateReservation,
+                Detail = detail
+            }, StatusCodes.Status200OK, detail);
+        }
+        catch (Exception logEx)
+        {
+            _logger.LogError(logEx, "[ExternalReservationTrace] Property Uploads log failed PropertyCode={PropertyCode} ExternalRefNo={ExternalRefNo}", item.PropertyCode, item.ExternalRefNo);
+        }
     }
 
     private async Task TryLogExternalReservationSaveFailureAsync(ExternalPropertyIntakeContext context, ExternalReservationBatchItemResultDto item, int httpStatusCode)

@@ -1,6 +1,6 @@
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
-/// <summary>Charge the reservation's saved EasyPay card; staff enter the amount.</summary>
+/// <summary>Charge the reservation's saved Number card; staff enter the amount.</summary>
 public class ChargeCardOnFileRequestDto
 {
     /// <summary>From the route; set by the controller.</summary>
