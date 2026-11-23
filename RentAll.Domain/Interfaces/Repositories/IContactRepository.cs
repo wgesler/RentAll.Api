@@ -19,11 +19,6 @@ public interface IContactRepository
 
     Task<Contact> CreateAsync(Contact contact);
     Task<Contact> UpdateByIdAsync(Contact contact);
-    Task SaveEncryptedAccountNumberAsync(Guid contactId, byte[] encryptedAccountNumber, string lastFour, Guid modifiedBy);
-    Task SaveBankInformationAsync(Guid contactId, string bankName, string routingNumber, byte[] encryptedAccountNumber, string lastFour, int bankAccountTypeId, string nameOnAccount, Guid modifiedBy);
-    Task<byte[]?> GetEncryptedAccountNumberAsync(Guid contactId);
-    Task<IEnumerable<(Guid ContactId, string AccountNumber)>> GetClearAccountNumbersAsync(Guid organizationId);
-    Task ClearBankInformationAsync(Guid contactId, Guid modifiedBy);
     Task DeleteContactByIdAsync(Guid contactId, Guid modifiedBy);
     #endregion
 

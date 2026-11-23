@@ -197,8 +197,6 @@ public class ExternalPropertyContactDto
             Extension = TrimOrNull(Extension),
             PreferredName = TrimOrNull(PreferredName),
             Notes = TrimOrNull(Notes),
-            BankName = TrimOrNull(BankName),
-            RoutingNumber = TrimOrNull(RoutingNumber),
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
@@ -257,8 +255,6 @@ public class ExternalPropertyContactDto
             Extension = TrimOrNull(Extension),
             PreferredName = TrimOrNull(PreferredName),
             Notes = TrimOrNull(Notes),
-            BankName = TrimOrNull(BankName),
-            RoutingNumber = TrimOrNull(RoutingNumber),
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
@@ -382,8 +378,8 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.notes is {Notes.Trim().Length} characters; max is 250.");
         if (!string.IsNullOrWhiteSpace(BankName) && BankName.Trim().Length > 250)
             errors.Add($"{fieldLabel}.bankName is {BankName.Trim().Length} characters; max is 250.");
-        if (!string.IsNullOrWhiteSpace(RoutingNumber) && RoutingNumber.Trim().Length > 250)
-            errors.Add($"{fieldLabel}.routingNumber is {RoutingNumber.Trim().Length} characters; max is 250.");
+        if (!string.IsNullOrWhiteSpace(RoutingNumber) && RoutingNumber.Trim().Length > 50)
+            errors.Add($"{fieldLabel}.routingNumber is {RoutingNumber.Trim().Length} characters; max is 50.");
 
         var accountNumber = TrimOrNull(AccountNumber);
         if (accountNumber != null && !accountNumber.Contains('*', StringComparison.Ordinal))
@@ -408,16 +404,23 @@ public class ExternalPropertyContactDto
         var notes = TrimOrNull(Notes);
         if (notes != null)
             contact.Notes = notes;
-        var bankName = TrimOrNull(BankName);
-        if (bankName != null)
-            contact.BankName = bankName;
-        var routingNumber = TrimOrNull(RoutingNumber);
-        if (routingNumber != null)
-            contact.RoutingNumber = routingNumber;
         if (IsActive.HasValue)
             contact.IsActive = IsActive.Value;
         if (IsInternational.HasValue)
             contact.IsInternational = IsInternational.Value;
+    }
+
+    public bool HasBankInformation() => TrimOrNull(BankName) != null || TrimOrNull(RoutingNumber) != null || ClearAccountNumber() != null;
+
+    /// <summary>Copies the bank fields that were sent onto the contact's bank account; fields left out keep their values.</summary>
+    public void ApplyToContactBank(ContactBank bank)
+    {
+        var bankName = TrimOrNull(BankName);
+        if (bankName != null)
+            bank.BankName = bankName;
+        var routingNumber = TrimOrNull(RoutingNumber);
+        if (routingNumber != null)
+            bank.RoutingNumber = routingNumber;
     }
 
     public string? ClearAccountNumber()

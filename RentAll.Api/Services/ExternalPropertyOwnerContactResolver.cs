@@ -10,25 +10,25 @@ public class ExternalPropertyOwnerContactResolver
 {
     private readonly IContactRepository _contactRepository;
     private readonly IContactManager _contactManager;
-    private readonly IEncryptionService _encryptionService;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly ExternalPropertyPhotoUrlImporter _urlImporter;
     private readonly ContactCardStore _contactCardStore;
+    private readonly ContactBankStore _contactBankStore;
 
     public ExternalPropertyOwnerContactResolver(
         IContactRepository contactRepository,
         IContactManager contactManager,
-        IEncryptionService encryptionService,
         IOrganizationRepository organizationRepository,
         ExternalPropertyPhotoUrlImporter urlImporter,
-        ContactCardStore contactCardStore)
+        ContactCardStore contactCardStore,
+        ContactBankStore contactBankStore)
     {
         _contactRepository = contactRepository;
         _contactManager = contactManager;
-        _encryptionService = encryptionService;
         _organizationRepository = organizationRepository;
         _urlImporter = urlImporter;
         _contactCardStore = contactCardStore;
+        _contactBankStore = contactBankStore;
     }
 
     public async Task<(bool Success, Guid? Owner1Id, Guid? Owner2Id, Guid? Owner3Id, Guid? PropertyVendorContactId, string? ErrorMessage)> ResolveContactsAsync(CreateExternalPropertyDto dto, ExternalPropertyIntakeContext context, Guid currentUser)
@@ -319,7 +319,7 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, owner.GetResolvedContactCard(), currentUser);
-            await ProtectProvidedAccountNumberAsync(updatedContact, owner.ClearAccountNumber(), currentUser);
+            await ApplyContactBankAsync(updatedContact, owner, currentUser);
             return (true, true, updatedContact, null);
         }
 
@@ -331,7 +331,7 @@ public class ExternalPropertyOwnerContactResolver
             return (false, false, null, createImageError);
         var createdContact = await _contactRepository.CreateAsync(newOwner);
         await ApplyContactCardAsync(createdContact, owner.GetResolvedContactCard(), currentUser);
-        await ProtectProvidedAccountNumberAsync(createdContact, owner.ClearAccountNumber(), currentUser);
+        await ApplyContactBankAsync(createdContact, owner, currentUser);
         return (true, false, createdContact, null);
     }
 
@@ -355,7 +355,7 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, vendor.GetResolvedContactCard(), currentUser);
-            await ProtectProvidedAccountNumberAsync(updatedContact, vendor.ClearAccountNumber(), currentUser);
+            await ApplyContactBankAsync(updatedContact, vendor, currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
@@ -367,7 +367,7 @@ public class ExternalPropertyOwnerContactResolver
             return (false, null, createImageError);
         var createdContact = await _contactRepository.CreateAsync(newVendor);
         await ApplyContactCardAsync(createdContact, vendor.GetResolvedContactCard(), currentUser);
-        await ProtectProvidedAccountNumberAsync(createdContact, vendor.ClearAccountNumber(), currentUser);
+        await ApplyContactBankAsync(createdContact, vendor, currentUser);
         return (true, createdContact.ContactId, null);
     }
 
@@ -406,16 +406,15 @@ public class ExternalPropertyOwnerContactResolver
         return null;
     }
 
-    private async Task ProtectProvidedAccountNumberAsync(Contact contact, string? accountNumber, Guid currentUser)
+    private async Task ApplyContactBankAsync(Contact contact, ExternalPropertyContactDto contactDto, Guid currentUser)
     {
-        if (string.IsNullOrWhiteSpace(accountNumber))
+        if (!contactDto.HasBankInformation())
             return;
 
-        var lastFour = accountNumber.Length <= 4 ? accountNumber : accountNumber[^4..];
-        var encrypted = await _encryptionService.EncryptAsync(accountNumber);
-        await _contactRepository.SaveEncryptedAccountNumberAsync(contact.ContactId, encrypted, lastFour, currentUser);
-        contact.AccountNumber = null;
-        contact.AccountNumberLastFour = lastFour;
+        var bank = contact.ContactBankId is > 0 ? await _contactRepository.GetContactBankByIdAsync(contact.ContactBankId.Value, contact.OrganizationId, contact.OfficeId) : null;
+        bank ??= new ContactBank();
+        contactDto.ApplyToContactBank(bank);
+        await _contactBankStore.SaveAsync(contact, bank, contactDto.ClearAccountNumber(), currentUser);
     }
 
     private static bool TryGetProperty(JsonElement body, string name, out JsonElement value)

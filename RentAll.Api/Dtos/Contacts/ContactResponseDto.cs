@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Contacts.ContactBanks;
 using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain.Models.Common;
 
@@ -55,14 +56,10 @@ public class ContactResponseDto
     public FileDetails? DocumentBackFileDetails { get; set; }
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
-    public string? BankName { get; set; }
-    public string? RoutingNumber { get; set; }
-    public string? AccountNumber { get; set; }
-    public string? AccountNumberLastFour { get; set; }
-    public int? BankAccountTypeId { get; set; }
-    public string? NameOnAccount { get; set; }
     public int? ContactCardId { get; set; }
     public ContactCardResponseDto? ContactCard { get; set; }
+    public int? ContactBankId { get; set; }
+    public ContactBankResponseDto? ContactBank { get; set; }
     public bool IsOwnerReady { get; set; }
     public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }
@@ -123,13 +120,8 @@ public class ContactResponseDto
         DocumentBackFileDetails = contact.DocumentBackFileDetails;
         W9Path = contact.W9Path;
         W9FileDetails = contact.W9FileDetails;
-        BankName = contact.BankName;
-        RoutingNumber = contact.RoutingNumber;
-        AccountNumber = contact.AccountNumber;
-        AccountNumberLastFour = contact.AccountNumberLastFour;
-        BankAccountTypeId = contact.BankAccountTypeId;
-        NameOnAccount = contact.NameOnAccount;
         ContactCardId = contact.ContactCardId;
+        ContactBankId = contact.ContactBankId;
         IsOwnerReady = contact.IsOwnerReady;
         OwnerLeadId = contact.OwnerLeadId;
         IsActive = contact.IsActive;

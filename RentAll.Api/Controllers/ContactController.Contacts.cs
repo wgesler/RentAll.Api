@@ -85,6 +85,7 @@ namespace RentAll.Api.Controllers
                 response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.DocumentFront, ImageType.OwnerDocuments);
                 response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, contact);
+                await AttachContactBankAsync(response, contact);
 
                 return Ok(response);
             }
@@ -122,9 +123,9 @@ namespace RentAll.Api.Controllers
                 contact.DocumentFront = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.DocumentFrontFileDetails, ImageType.OwnerDocuments);
                 contact.DocumentBack = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.DocumentBackFileDetails, ImageType.OwnerDocuments);
                 contact.ContactCardId = await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, null, dto.ContactCard);
+                contact.ContactBankId = await SyncContactBankAsync(dto.OrganizationId, dto.OfficeId, null, dto.ContactBank);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
-                await ProtectAccountNumberAsync(createdContact);
                 var afterLogin = await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
                 var response = new ContactResponseDto(afterLogin);
 
@@ -133,6 +134,7 @@ namespace RentAll.Api.Controllers
                 response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.DocumentFront, ImageType.OwnerDocuments);
                 response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, afterLogin);
+                await AttachContactBankAsync(response, afterLogin);
 
                 return Ok(response);
             }
@@ -186,8 +188,8 @@ namespace RentAll.Api.Controllers
                 contact.DocumentFront = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentFrontFileDetails, ImageType.OwnerDocuments, existing.DocumentFront, dto.DocumentFront);
                 contact.DocumentBack = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentBackFileDetails, ImageType.OwnerDocuments, existing.DocumentBack, dto.DocumentBack);
                 contact.ContactCardId = await ResolveSavedContactCardIdAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCardId, dto.ContactCard);
+                contact.ContactBankId = await SyncContactBankAsync(dto.OrganizationId, dto.OfficeId, existing.ContactBankId, dto.ContactBank);
 
-                await ProtectAccountNumberAsync(contact);
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 var response = new ContactResponseDto(updatedContact);
 
@@ -196,6 +198,7 @@ namespace RentAll.Api.Controllers
                 response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.DocumentFront, ImageType.OwnerDocuments);
                 response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, updatedContact);
+                await AttachContactBankAsync(response, updatedContact);
 
                 return Ok(response);
             }

@@ -62,11 +62,15 @@ public class ExternalContactResponseDto
             PropertyManagedBy = contact.PropertyManagedBy.HasValue ? (int)contact.PropertyManagedBy.Value : null,
             OwnerTypeId = (int)contact.OwnerType,
             CompanyName = contact.CompanyName,
-            BankName = contact.BankName,
-            RoutingNumber = contact.RoutingNumber,
-            AccountNumber = MaskAccountNumber(contact.AccountNumberLastFour),
             Properties = (contact.Properties ?? []).Where(code => !string.IsNullOrWhiteSpace(code)).Select(code => code.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
+    }
+
+    public void ApplyBank(string? bankName, string? routingNumber, string? lastFour)
+    {
+        BankName = bankName;
+        RoutingNumber = routingNumber;
+        AccountNumber = MaskAccountNumber(lastFour);
     }
 
     public void ApplyCard(int cardTypeId, string? cardName, string? lastFour)

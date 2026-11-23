@@ -3,8 +3,8 @@ using RentAll.Domain.Models.Accounting;
 namespace RentAll.Api.Dtos.Reservations.ReservationPayments;
 
 /// <summary>
-/// A tenant's bank account from the pay-request page's ACH Debit form. The numbers are passed to EasyPay and saved to the
-/// tenant contact's Bank Information (account number encrypted); they are never logged.
+/// A tenant's bank account from the pay-request page's ACH Debit form. The numbers are passed to EasyPay and saved as the
+/// tenant contact's bank account (ContactBank, account number encrypted); they are never logged.
 /// </summary>
 public class PayRequestAchRequestDto
 {

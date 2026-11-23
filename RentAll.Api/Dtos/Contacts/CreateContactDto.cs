@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Contacts.ContactBanks;
 using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain.Models.Common;
 
@@ -45,13 +46,9 @@ public class CreateContactDto
     public FileDetails? DocumentFrontFileDetails { get; set; }
     public FileDetails? DocumentBackFileDetails { get; set; }
     public FileDetails? W9FileDetails { get; set; }
-    public string? BankName { get; set; }
-    public string? RoutingNumber { get; set; }
-    public string? AccountNumber { get; set; }
-    public int? BankAccountTypeId { get; set; }
-    public string? NameOnAccount { get; set; }
     public int? ContactCardId { get; set; }
     public UpsertContactCardDto? ContactCard { get; set; }
+    public UpsertContactBankDto? ContactBank { get; set; }
     public bool IsOwnerReady { get; set; }
     public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }
@@ -111,11 +108,13 @@ public class CreateContactDto
         if (identificationNumber != null && identificationNumber.Length > 9)
             return (false, "IdentificationNumber must be 9 characters or fewer after removing hyphens");
 
-        if (BankAccountTypeId.HasValue && !Enum.IsDefined(typeof(BankAccountType), BankAccountTypeId.Value))
-            return (false, $"Invalid BankAccountTypeId value: {BankAccountTypeId}");
 
-        if ((NameOnAccount ?? string.Empty).Trim().Length > 100)
-            return (false, "NameOnAccount must be 100 characters or fewer");
+        if (ContactBank != null)
+        {
+            var (bankIsValid, bankError) = ContactBank.IsValid();
+            if (!bankIsValid)
+                return (false, bankError);
+        }
 
         if (ContactCard != null)
         {
@@ -172,11 +171,6 @@ public class CreateContactDto
             DocumentFront = null,
             DocumentBack = null,
             W9Path = null, // Will be set by controller after file save
-            BankName = BankName,
-            RoutingNumber = RoutingNumber,
-            AccountNumber = AccountNumber,
-            BankAccountTypeId = BankAccountTypeId,
-            NameOnAccount = string.IsNullOrWhiteSpace(NameOnAccount) ? null : NameOnAccount.Trim(),
             ContactCardId = ContactCardId,
             IsOwnerReady = IsOwnerReady,
             OwnerLeadId = OwnerLeadId,

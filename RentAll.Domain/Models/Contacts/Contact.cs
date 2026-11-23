@@ -55,13 +55,8 @@ public class Contact
     public FileDetails? DocumentBackFileDetails { get; set; }
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
-    public string? BankName { get; set; }
-    public string? RoutingNumber { get; set; }
-    public string? AccountNumber { get; set; }
-    public string? AccountNumberLastFour { get; set; }
-    public int? BankAccountTypeId { get; set; }
-    public string? NameOnAccount { get; set; }
     public int? ContactCardId { get; set; }
+    public int? ContactBankId { get; set; }
     public bool IsOwnerReady { get; set; }
     public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }

@@ -113,8 +113,7 @@ public partial class ReservationController
 
     /// <summary>
     /// ACH Debit: saves the tenant's bank account with EasyPay (ACH/Combo at $0, so nothing is debited) and keeps the
-    /// returned ConsentID with the last four digits. The tenant contact's Bank Information is filled in too, with the
-    /// account number encrypted the same way the contact screen stores it.
+    /// returned ConsentID on the tenant contact's bank account (ContactBank), with the account number encrypted.
     /// </summary>
     [AllowAnonymous]
     [HttpPost("external/pay-request/{token}/ach")]
@@ -162,8 +161,7 @@ public partial class ReservationController
                 return Ok(new PayRequestAchResponseDto(result));
             }
 
-            var encryptedAccountNumber = await _encryptionService.EncryptAsync(dto.AccountDigits, HttpContext.RequestAborted);
-            var saved = await _contactRepository.CreateContactBankAsync(new ContactBank
+            var bank = new ContactBank
             {
                 OrganizationId = reservation.OrganizationId,
                 OfficeId = reservation.OfficeId,
@@ -175,19 +173,12 @@ public partial class ReservationController
                 NumberConsentId = (int)result.ConsentId,
                 ReservationId = reservation.ReservationId,
                 AuthorizedOn = DateTimeOffset.UtcNow
-            }, encryptedAccountNumber);
-            if (contact != null)
-            {
-                // The consent is already saved with EasyPay, so a failure here is logged and never fails the tenant's save.
-                try
-                {
-                    await _contactRepository.SaveBankInformationAsync(contact.ContactId, dto.BankName.Trim(), dto.RoutingDigits, encryptedAccountNumber, dto.AccountLast4, dto.AccountType, dto.NameOnAccount.Trim(), link!.CreatedBy);
-                }
-                catch (Exception ex)
-                {
-                    LogApplicationError(ex, "SavePayRequestAchContactBank", officeId);
-                }
-            }
+            };
+            // The tenant contact's bank account (ContactBank) is created or replaced and linked. Without a contact, the
+            // account is kept on its own row for the reservation.
+            var saved = contact != null
+                ? await _contactBankStore.SaveAsync(contact, bank, dto.AccountDigits, link!.CreatedBy)
+                : await _contactBankStore.UpsertAsync(reservation.OrganizationId, reservation.OfficeId, null, bank, dto.AccountDigits);
             await _accountingRepository.CompletePaymentLinkByTokenAsync(link!.Token);
             _logger.LogError("[NumberAch] Step=Saved ReservationId={ReservationId} ConsentID={ConsentId} AccountLast4={AccountLast4}",
                 reservation.ReservationId, saved.NumberConsentId, saved.LastFour);
