@@ -93,6 +93,11 @@ public class ExternalPropertyPhotoSyncService
                 .Where(item => item.Status is PropertyPhotoImportItemStatus.Pending or PropertyPhotoImportItemStatus.InProgress)
                 .Select(item => NormalizePhotoUrl(item.Url))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // Photos that already failed every attempt are final: never queued again for this property.
+            var finalFailedUrls = importItems
+                .Where(item => item.Status == PropertyPhotoImportItemStatus.Failed && item.AttemptCount >= ExternalPropertyPhotoImportProcessor.MaxPhotoImportAttempts)
+                .Select(item => NormalizePhotoUrl(item.Url))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var importItem in importItems)
             {
@@ -137,7 +142,7 @@ public class ExternalPropertyPhotoSyncService
                     continue;
                 }
 
-                if (pendingOrInProgressUrls.Contains(normalizedUrl))
+                if (pendingOrInProgressUrls.Contains(normalizedUrl) || finalFailedUrls.Contains(normalizedUrl))
                     continue;
 
                 photosToQueue.Add(desiredPhoto);

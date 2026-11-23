@@ -309,7 +309,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             ErrorMessage = e.ErrorMessage,
             PhotoId = e.PhotoId,
             StartedOn = e.StartedOn,
-            CompletedOn = e.CompletedOn
+            CompletedOn = e.CompletedOn,
+            AttemptCount = e.AttemptCount
         };
 
         private static PropertyListingShare ConvertEntityToModel(PropertyListingShareEntity e) => new()

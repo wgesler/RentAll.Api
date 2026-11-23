@@ -177,7 +177,8 @@ public class AzureBlobStorageService : IFileService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reading logo from Azure Blob Storage: {FilePath}", filePath);
+            // Warning, not Error: below ApplicationLogging:MinimumLevel, so it stays out of the Application Log (console only).
+            _logger.LogWarning(ex, "Could not read file from Azure Blob Storage: {FilePath}", filePath);
             return null;
         }
     }

@@ -68,8 +68,10 @@ public class ApplicationLogLogger : ILogger
                 Level = logLevel.ToString(),
                 Category = _categoryName,
                 EventId = eventId.Id == 0 ? null : eventId.Id,
-                OrganizationId = ResolveOrganizationId(httpContext),
-                OfficeId = ResolveInt(httpContext, "officeId"),
+                // No request context (background jobs): use the OrganizationId/OfficeId named in the message, if any.
+                // Still none: ApplicationLog_Add files it under the System organization, office 0.
+                OrganizationId = ResolveOrganizationId(httpContext) ?? ResolveGuidFromState(state, "OrganizationId"),
+                OfficeId = ResolveInt(httpContext, "officeId") ?? ResolveIntFromState(state, "OfficeId"),
                 TraceId = httpContext?.TraceIdentifier,
                 Message = Truncate(message),
                 Exception = exception?.ToString(),
@@ -135,6 +137,36 @@ public class ApplicationLogLogger : ILogger
         }
 
         return null;
+    }
+
+    private static Guid? ResolveGuidFromState<TState>(TState state, string key)
+    {
+        var value = FindStateValue(state, key);
+        return value switch
+        {
+            Guid guid => guid,
+            string text when Guid.TryParse(text, out var parsed) => parsed,
+            _ => null
+        };
+    }
+
+    private static int? ResolveIntFromState<TState>(TState state, string key)
+    {
+        var value = FindStateValue(state, key);
+        return value switch
+        {
+            int number => number,
+            string text when int.TryParse(text, out var parsed) => parsed,
+            _ => null
+        };
+    }
+
+    private static object? FindStateValue<TState>(TState state, string key)
+    {
+        if (state is not IEnumerable<KeyValuePair<string, object?>> structuredState)
+            return null;
+
+        return structuredState.FirstOrDefault(pair => string.Equals(pair.Key, key, StringComparison.OrdinalIgnoreCase)).Value;
     }
 
     private static Guid? ResolveGuid(HttpContext? context, string key)

@@ -12,4 +12,5 @@ public class PropertyPhotoImportItemEntity
     public int? PhotoId { get; set; }
     public DateTimeOffset? StartedOn { get; set; }
     public DateTimeOffset? CompletedOn { get; set; }
+    public int AttemptCount { get; set; }
 }

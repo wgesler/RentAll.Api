@@ -202,6 +202,8 @@ public partial class ReservationController
         var link = await _accountingRepository.GetPaymentLinkByTokenAsync(token);
         if (link == null)
             return (null, null, null, NotFound("This payment link is not valid."));
+        // The payer isn't signed in: tag this request's log rows (including [EasyPayLog]) with the link's organization so they show in its Application Log.
+        SetApplicationLogContext(link.OrganizationId, link.OfficeId);
         if (link.ExpiresOn < DateTimeOffset.UtcNow)
             return (link, null, null, StatusCode(StatusCodes.Status410Gone, "This payment link has expired. Please ask for a new one."));
 

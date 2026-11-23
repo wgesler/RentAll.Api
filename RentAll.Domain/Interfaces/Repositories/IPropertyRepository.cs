@@ -79,6 +79,7 @@ public interface IPropertyRepository
     Task<IEnumerable<PropertyPhotoImportItem>> GetPropertyPhotoImportItemsByPropertyIdAsync(Guid propertyId);
     Task<PropertyPhotoImportClaim?> ClaimNextPropertyPhotoImportItemAsync();
     Task CompletePropertyPhotoImportItemAsync(int importItemId, PropertyPhotoImportItemStatus status, int? photoId, string? errorMessage);
+    Task RetryPropertyPhotoImportItemAsync(int importItemId, string? errorMessage, int retryDelayMinutes);
     #endregion
 
     #region Property Listing Share

@@ -77,6 +77,7 @@ public partial class ReservationController
             }
 
             officeId = reservation.OfficeId;
+            SetApplicationLogContext(reservation.OrganizationId, reservation.OfficeId);
             var organization = await _organizationRepository.GetOrganizationByIdAsync(reservation.OrganizationId);
             if (organization == null)
                 return NotFound("Organization not found");

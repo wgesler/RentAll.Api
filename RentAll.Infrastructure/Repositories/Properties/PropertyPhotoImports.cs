@@ -110,5 +110,16 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 ErrorMessage = errorMessage
             });
         }
+
+        public async Task RetryPropertyPhotoImportItemAsync(int importItemId, string? errorMessage, int retryDelayMinutes)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.PropertyPhotoImportItem_Retry", new
+            {
+                ImportItemId = importItemId,
+                ErrorMessage = errorMessage,
+                RetryDelayMinutes = retryDelayMinutes
+            });
+        }
     }
 }

@@ -5,6 +5,9 @@ namespace RentAll.Api.Services;
 
 public class ExternalPropertyPhotoImportProcessor
 {
+    public const int MaxPhotoImportAttempts = 3;
+    private const int RetryDelayMinutes = 5;
+
     private readonly IPropertyRepository _propertyRepository;
     private readonly ExternalPropertyPhotoUrlImporter _urlImporter;
     private readonly ExternalPropertyUploadLogService _uploadLogService;
@@ -36,23 +39,7 @@ public class ExternalPropertyPhotoImportProcessor
             var (photoPath, downloadError) = await _urlImporter.DownloadAndSaveAsync(claim.OrganizationId, listingScope, claim.Item.Url);
             if (string.IsNullOrWhiteSpace(photoPath))
             {
-                var errorMessage = downloadError ?? "Unable to save photo file";
-                await _propertyRepository.CompletePropertyPhotoImportItemAsync(
-                    claim.Item.ImportItemId,
-                    PropertyPhotoImportItemStatus.Failed,
-                    null,
-                    errorMessage);
-                await _uploadLogService.LogPhotoFailedAsync(
-                    claim.OrganizationId,
-                    claim.OfficeId,
-                    claim.VendorId,
-                    claim.PropertyId,
-                    claim.PropertyCode,
-                    claim.Item.ImportId,
-                    claim.Item.SortOrder,
-                    claim.Item.Url,
-                    errorMessage);
-                await TryLogPhotoImportFinishedAsync(claim);
+                await HandleFailedAttemptAsync(claim, downloadError ?? "Unable to save photo file");
                 return true;
             }
 
@@ -85,31 +72,39 @@ public class ExternalPropertyPhotoImportProcessor
         {
             _logger.LogError(
                 ex,
-                "Error processing external property photo import item. ImportItemId={ImportItemId}, ImportId={ImportId}, Url={PhotoUrl}",
-                claim.Item.ImportItemId,
-                claim.Item.ImportId,
-                claim.Item.Url);
-
-            const string errorMessage = "Unable to add photo";
-            await _propertyRepository.CompletePropertyPhotoImportItemAsync(
-                claim.Item.ImportItemId,
-                PropertyPhotoImportItemStatus.Failed,
-                null,
-                errorMessage);
-            await _uploadLogService.LogPhotoFailedAsync(
+                "Error processing external property photo import item. OrganizationId={OrganizationId}, OfficeId={OfficeId}, ImportItemId={ImportItemId}, ImportId={ImportId}, Attempt={Attempt}, Url={PhotoUrl}",
                 claim.OrganizationId,
                 claim.OfficeId,
-                claim.VendorId,
-                claim.PropertyId,
-                claim.PropertyCode,
+                claim.Item.ImportItemId,
                 claim.Item.ImportId,
-                claim.Item.SortOrder,
-                claim.Item.Url,
-                errorMessage);
-            await TryLogPhotoImportFinishedAsync(claim);
+                claim.Item.AttemptCount,
+                claim.Item.Url);
+
+            await HandleFailedAttemptAsync(claim, "Unable to add photo");
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// A failed download is tried again after RetryDelayMinutes, up to MaxPhotoImportAttempts in all. The last failure is
+    /// final: the item is marked Failed, logged once to Property Uploads, and never queued again for this property.
+    /// </summary>
+    private async Task HandleFailedAttemptAsync(PropertyPhotoImportClaim claim, string errorMessage)
+    {
+        if (claim.Item.AttemptCount < MaxPhotoImportAttempts)
+        {
+            await _propertyRepository.RetryPropertyPhotoImportItemAsync(claim.Item.ImportItemId, errorMessage, RetryDelayMinutes);
+            return;
+        }
+
+        var finalMessage = $"{errorMessage} (failed after {MaxPhotoImportAttempts} attempts)";
+        if (finalMessage.Length > 500)
+            finalMessage = finalMessage[..500];
+
+        await _propertyRepository.CompletePropertyPhotoImportItemAsync(claim.Item.ImportItemId, PropertyPhotoImportItemStatus.Failed, null, finalMessage);
+        await _uploadLogService.LogPhotoFailedAsync(claim.OrganizationId, claim.OfficeId, claim.VendorId, claim.PropertyId, claim.PropertyCode, claim.Item.ImportId, claim.Item.SortOrder, claim.Item.Url, finalMessage);
+        await TryLogPhotoImportFinishedAsync(claim);
     }
 
     private async Task TryLogPhotoImportFinishedAsync(PropertyPhotoImportClaim claim)
