@@ -28,6 +28,7 @@ public class Office
     public bool UseExternalRefNo { get; set; }
     public bool PetFeeTimesNoDogs { get; set; }
     public bool SortPropertiesNumerically { get; set; }
+    public bool ExcludeInvoiceFromSubject { get; set; }
     public int DaysToRefundDeposit { get; set; }
     public decimal DefaultDeposit { get; set; }
     public decimal DefaultSdw { get; set; }
