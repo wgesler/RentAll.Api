@@ -105,8 +105,6 @@ public partial class ReservationController
     /// </summary>
     private async Task<NumberReturnResult> ProcessNumberReturnAsync(Guid reservationId, long txId, long consentId)
     {
-        _logger.LogWarning("[EasyPay CardFormReturned] ReservationId={ReservationId} TXID={TxId} CID={ConsentId} Query={Query}",
-            reservationId, txId, consentId, Request.QueryString.Value);
 
         var result = new NumberReturnResult
         {
@@ -253,7 +251,9 @@ public partial class ReservationController
             consent.ExpDate ?? post.ExpireDate,
             consent.FirstName ?? post.CardholderFirstName ?? post.CustomerFirstName,
             consent.LastName ?? post.CardholderLastName ?? post.CustomerLastName));
-        await TryHoldNumberSubscriptionAsync(organization, reservation, consent.Id);
+        // Only a subscription consent can bill on its own; an annual consent (Save Card on File form) has nothing to hold.
+        if (consent.IsSubscription)
+            await TryHoldNumberSubscriptionAsync(organization, reservation, consent.Id);
         return Ok();
     }
 
@@ -327,7 +327,7 @@ public partial class ReservationController
 
     private sealed record NumberPaymentToRecord(
         long TxId, decimal ApprovedAmount, decimal RequestedAmount, bool IsPartialApproval,
-        string? CardLabel, string? TxnCode, string DescriptionPrefix, Guid CreatedBy);
+        string? CardLabel, string? TxnCode, string DescriptionPrefix, Guid CreatedBy, PaymentType PaymentType = PaymentType.CreditCard);
 
     private sealed record NumberCardDetails(string? CardType, string? CardNumber, string? ExpireDate, string? FirstName, string? LastName);
 
@@ -355,10 +355,12 @@ public partial class ReservationController
             return null;
         }
 
-        var costCode = await ResolveCreditCardPaymentCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
+        var costCode = toRecord.PaymentType == PaymentType.Ach
+            ? await ResolveAchPaymentCostCodeAsync(reservation.OrganizationId, reservation.OfficeId)
+            : await ResolveCreditCardPaymentCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
         if (costCode == null)
         {
-            _logger.LogError("[EasyPay PaymentNotRecorded] TxID={TxId} ReservationId={ReservationId} Reason=NoCreditCardPaymentCostCode", numberTxId, reservation.ReservationId);
+            _logger.LogError("[EasyPay PaymentNotRecorded] TxID={TxId} ReservationId={ReservationId} Reason=NoPaymentCostCode PaymentType={PaymentType}", numberTxId, reservation.ReservationId, toRecord.PaymentType);
             return null;
         }
 
@@ -380,7 +382,7 @@ public partial class ReservationController
             CostCodeId = costCode.CostCodeId,
             Description = $"{toRecord.DescriptionPrefix}{cardText} (TxID {numberTxId}{partialNote})",
             PaymentKindId = (int)PaymentKind.Invoice,
-            PaymentTypeId = (int)PaymentType.CreditCard,
+            PaymentTypeId = (int)toRecord.PaymentType,
             NumberTxId = numberTxId,
             NumberTxnCode = toRecord.TxnCode,
             IsActive = true,
@@ -537,6 +539,16 @@ public partial class ReservationController
 
         return paymentCodes.FirstOrDefault(code => code.Description.Contains("Credit Card", StringComparison.OrdinalIgnoreCase))
             ?? paymentCodes.FirstOrDefault(code => code.Description.Split(' ', '-', '/').Any(word => word.Equals("CC", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    // The office's active Payment cost code for ACH (description has the word "ACH").
+    private async Task<CostCode?> ResolveAchPaymentCostCodeAsync(Guid organizationId, int officeId)
+    {
+        return (await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, officeId))
+            .Where(code => code.IsActive && code.TransactionType == TransactionType.Payment)
+            .Where(code => !code.Description.Contains("Refund", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(code => code.CostCodeId)
+            .FirstOrDefault(code => code.Description.Split(' ', '-', '/', '(', ')').Any(word => word.Equals("ACH", StringComparison.OrdinalIgnoreCase)));
     }
 
 }

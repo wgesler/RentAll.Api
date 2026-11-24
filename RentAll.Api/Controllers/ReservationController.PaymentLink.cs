@@ -261,9 +261,8 @@ public partial class ReservationController
     }
 
     /// <summary>
-    /// Starts an Number card form for the reservation: $0 today plus a subscription block (the only way Number's PFS
-    /// form creates a saved card); the subscription is put on hold as soon as the consent comes back. The payer is
-    /// returned to redirectUrl with ?TXID=..&amp;CID=.. added.
+    /// Starts a Number Save Card on File form for the reservation: $0 and no subscription, so Number saves the card as
+    /// an annual consent that staff charge later. The payer is returned to redirectUrl with ?TXID=..&amp;CID=.. added.
     /// </summary>
     private async Task<string> CreateNumberCardFormUrlAsync(Organization organization, Reservation reservation, string redirectUrl, CancellationToken cancellationToken)
     {
@@ -293,12 +292,10 @@ public partial class ReservationController
             StreetAddress = contact?.Address1?.Trim() ?? string.Empty,
             City = contact?.City?.Trim() ?? string.Empty,
             State = contact?.State?.Trim() ?? string.Empty,
-            Zip = contact?.Zip?.Trim() ?? string.Empty,
-            // Never bills: held as soon as the consent arrives. A real amount is required; $0 makes the form do nothing.
-            Subscription = new NumberSubscription { Amount = 20m, Period = "WEEKLY", FirstPayDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7)) }
+            Zip = contact?.Zip?.Trim() ?? string.Empty
         };
         return await WithNumberSessionAsync(organization, reservation.OfficeId,
-            session => _numberService.CreatePfsFormUrlAsync(session, payForm, cancellationToken), cancellationToken);
+            session => _numberService.CreatePayFormUrlAsync(session, payForm, cancellationToken), cancellationToken);
     }
 
     /// <summary>

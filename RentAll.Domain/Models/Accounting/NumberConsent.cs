@@ -1,11 +1,14 @@
 namespace RentAll.Domain.Models.Accounting;
 
 /// <summary>
-/// A saved card (annual consent) as Number's Query/ConsentAnnual_FullDetail reports it.
+/// A saved card as Number reports it: an annual consent (Query/ConsentAnnual_FullDetail) or a subscription consent
+/// (Query/ConsentGeneral).
 /// </summary>
 public class NumberConsent
 {
     public long Id { get; set; }
+    /// <summary>True for a subscription consent (PFS form), which must be held so it never bills on its own.</summary>
+    public bool IsSubscription { get; set; }
     public int MerchId { get; set; }
     public bool IsEnabled { get; set; }
     public string? RpGuid { get; set; }

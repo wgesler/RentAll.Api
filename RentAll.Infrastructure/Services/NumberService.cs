@@ -27,6 +27,7 @@ public class NumberService : INumberService
     private const string SubscriptionModifyUrl = RestApiBaseUrl + "ConsentSubscription/Modify";
     private const string ConsentGeneralQueryUrl = RestApiBaseUrl + "Query/ConsentGeneral";
     private const string AchComboUrl = NumberApiBaseUrl + "ACH/Combo";
+    private const string AchProcPaymentUrl = NumberApiBaseUrl + "ACH/ProcPayment";
 
     // Form types: PF is the standard PayForm; PFS is the custom PayForm that Number says creates a consent (saved card).
     private const string PayFormType = "PF";
@@ -89,11 +90,14 @@ public class NumberService : INumberService
         return new NumberSession { SessKey = result.SessKey, MerchId = merchId, ExpiresOn = ReadSessionExpiry(result.RespMsg) };
     }
 
-    /// <summary>Standard PayForm (PF) for the payment email. Always $0: the payer only enters a card; staff charge it later.</summary>
+    /// <summary>
+    /// Save Card on File PayForm (PF) for the payment email: $0, no subscription. The payer enters a card and Number
+    /// saves it as an annual consent that staff charge later with ConsentAnnual/ChargeStoredCard.
+    /// </summary>
     public Task<string> CreatePayFormUrlAsync(NumberSession session, NumberPayForm payForm, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payForm);
-        var initRequest = BuildInitFormRequest(session, payForm, PayFormType, PayFormEndPoint, new InitAmounts(), BuildPayFormWidOptions());
+        var initRequest = BuildInitFormRequest(session, payForm, PayFormType, PayFormEndPoint, new InitAmounts(), SaveCardWidOptions());
         return InitFormAsync(session, PayFormInitUrl, initRequest, cancellationToken);
     }
 
@@ -374,6 +378,7 @@ public class NumberService : INumberService
             return new NumberConsent
             {
                 Id = idValue,
+                IsSubscription = true,
                 MerchId = c.TryGetProperty("MerchID", out var merch) && merch.TryGetInt32(out var merchId) ? merchId : 0,
                 IsEnabled = c.TryGetProperty("IsEnabled", out var enabled) && enabled.ValueKind == JsonValueKind.True,
                 RpGuid = Text("RPGUID"),
@@ -510,6 +515,46 @@ public class NumberService : INumberService
     }
 
     /// <summary>
+    /// Debits a saved bank account (the ACH consent from ACH/Combo) with ACH/ProcPayment. Number's answer has no
+    /// amounts, so an approval is for the amount requested. Approved means Number accepted the debit; the bank can
+    /// still return it later (for example for insufficient funds).
+    /// </summary>
+    public async Task<NumberStoredCardChargeResult> ChargeBankAccountAsync(NumberSession session, long consentId, decimal amount, CancellationToken cancellationToken = default)
+    {
+        if (consentId <= 0)
+            throw new InvalidOperationException("There is no saved bank account to debit.");
+        if (amount <= 0)
+            throw new InvalidOperationException("Debit amount must be greater than zero.");
+
+        var body = await PostAsync<JsonElement>(session, AchProcPaymentUrl, new { ConsentID = consentId, ProcessAmount = amount }, "ACH_ProcPayment", cancellationToken);
+        var result = body.ValueKind == JsonValueKind.Object && body.TryGetProperty("ACHConsentAnnual_ProcPaymentResult", out var r) ? r : default;
+        if (result.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException("Number ACH ProcPayment returned an empty response.");
+        long ReadLong(string name) => result.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : 0;
+        bool ReadBool(string name) => result.TryGetProperty(name, out var v) && JsonBool(v);
+        string? ReadText(string name) => result.TryGetProperty(name, out var v) ? JsonText(v) : null;
+
+        var errCode = (int)ReadLong("ErrCode");
+        if (NumberSessionExpiredException.IsSessionError(errCode))
+            throw new NumberSessionExpiredException(errCode, ReadText("ErrMsg"));
+
+        var functionOk = ReadBool("FunctionOk");
+        var approved = functionOk && ReadBool("TxApproved");
+        return new NumberStoredCardChargeResult
+        {
+            Approved = approved,
+            FunctionOk = functionOk,
+            TxId = ReadLong("TxID"),
+            TxnCode = ReadText("uniqueTranID"),
+            Message = ReadText("ErrMsg") ?? ReadText("RespMsg"),
+            ErrMsg = ReadText("ErrMsg"),
+            RespMsg = ReadText("RespMsg"),
+            ErrCode = errCode,
+            ApprovedTotal = approved ? amount : 0
+        };
+    }
+
+    /// <summary>
     /// Puts a PFS subscription on hold so it never bills on its own; the saved card stays usable.
     /// Number overwrites every field sent, so all others are -1 ("keep the existing value"), except PaymentAdjustDate, which is omitted.
     /// </summary>
@@ -571,19 +616,20 @@ public class NumberService : INumberService
         }
     }
 
-    // PF form: values from Number's PayForm builder, set in NumberSettings:WidOptions; blanks keep the PF sample defaults.
-    private InitWidOptions BuildPayFormWidOptions()
+    // PF Save Card on File form, from Number's PayForm builder (Consent Widget, Credit Card):
+    // eVisible 3623 = First and Last Name, Zip, Email, card number, Expiration, CVV and the "Agree to Save Card on File"
+    //   box (required to save the card). Name, zip and email are pre-filled from the contact.
+    // eSubmission 1421 = Save Card On File widget + Post Message to iFrame Parent + Redirect External + Send Only
+    //   TXID/ConsentID (without it Number appends an encrypted string instead of ?TXID=..&CID=..).
+    // eFeatures 0000 = no Subscription. eStyles 4402 = the PFS form's dark style with labels above the boxes.
+    private static InitWidOptions SaveCardWidOptions() => new()
     {
-        var configured = _settings.WidOptions ?? new NumberWidOptions();
-        var options = new InitWidOptions { eVisible = "0665", eReadOnly = "0040", eStyles = "0001", eSubmission = "0A01", eFeatures = "0000" };
-        options.eVisible = Blank(configured.EVisible) ?? options.eVisible;
-        options.eReadOnly = Blank(configured.EReadOnly) ?? options.eReadOnly;
-        options.eStyles = Blank(configured.EStyles) ?? options.eStyles;
-        options.eSubmission = Blank(configured.ESubmission) ?? options.eSubmission;
-        options.eFeatures = Blank(configured.EFeatures) ?? options.eFeatures;
-        options.eColors = Blank(configured.EColors) ?? options.eColors;
-        return options;
-    }
+        eVisible = "3623",
+        eReadOnly = "0000",
+        eStyles = "4402",
+        eSubmission = "1421",
+        eFeatures = "0000"
+    };
 
     // PFS form: Number's sample values for the custom PayForm. eSubmission 0221 posts the result to the parent page and redirects.
     private static InitWidOptions PfsWidOptions() => new()

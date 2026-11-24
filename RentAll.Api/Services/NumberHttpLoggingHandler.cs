@@ -29,7 +29,8 @@ public class NumberHttpLoggingHandler : DelegatingHandler
         ["Query/ConsentGeneral"] = "FindSubscriptionConsent",
         ["ConsentSubscription/Modify"] = "HoldSubscription",
         ["ConsentAnnual/ChargeStoredCard"] = "ChargeStoredCard",
-        ["ACH/Combo"] = "SaveBankAccount"
+        ["ACH/Combo"] = "SaveBankAccount",
+        ["ACH/ProcPayment"] = "ChargeBankAccount"
     };
 
     private readonly ILogger<NumberHttpLoggingHandler> _logger;

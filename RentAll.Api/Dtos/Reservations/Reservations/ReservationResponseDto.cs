@@ -88,6 +88,8 @@ public class ReservationResponseDto
     public int CurrentInvoiceNo { get; set; }
     /// <summary>Number saved a card for this reservation (the token itself is not sent).</summary>
     public bool HasNumberCardOnFile { get; set; }
+    /// <summary>The tenant contact has a bank account saved with Number (ACH consent); set by the controller.</summary>
+    public bool HasNumberBankOnFile { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

@@ -79,9 +79,11 @@ public partial class ReservationController
     /// </summary>
     [AllowAnonymous]
     [HttpGet("external/pay-response/{token}")]
-    public async Task<IActionResult> ReceivePayResponse(string token, [FromQuery(Name = "TXID")] long txId = 0, [FromQuery(Name = "CID")] long consentId = 0)
+    public async Task<IActionResult> ReceivePayResponse(string token, [FromQuery(Name = "TXID")] string? txId = null, [FromQuery(Name = "CID")] string? consentId = null)
     {
-        var request = new PayResponseRequestDto(token, txId, consentId);
+        // Read as text: the Save Card on File form returns a blank TXID (no transaction at $0), which a number parameter rejects.
+        _logger.LogError("[EasyPay CardFormReturned] Query={Query}", Request.QueryString.Value);
+        var request = new PayResponseRequestDto(token, ParseNumberId(txId), ParseNumberId(consentId));
         var (isValid, errorMessage) = request.IsValid();
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
@@ -110,6 +112,10 @@ public partial class ReservationController
             return ServerError("The payment response could not be processed.");
         }
     }
+
+    // Number's TXID/CID as a number; blank or unreadable is 0 (not sent).
+    private static long ParseNumberId(string? value) =>
+        long.TryParse(value?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : 0;
 
     /// <summary>
     /// ACH Debit: saves the tenant's bank account with Number (ACH/Combo at $0, so nothing is debited) and keeps the

@@ -123,7 +123,9 @@ namespace RentAll.Api.Controllers
                 if (reservation == null)
                     return NotFound("Reservation not found");
 
-                return Ok(new ReservationResponseDto(reservation));
+                var response = new ReservationResponseDto(reservation);
+                response.HasNumberBankOnFile = (await ResolveBankOnFileAsync(reservation)).ConsentId is > 0;
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -156,6 +158,7 @@ namespace RentAll.Api.Controllers
                 var createdReservation = await _reservationRepository.CreateAsync(reservation);
 
                 var response = new ReservationResponseDto(createdReservation);
+                response.HasNumberBankOnFile = (await ResolveBankOnFileAsync(createdReservation)).ConsentId is > 0;
                 return Ok(response);
             }
             catch (Exception ex)
@@ -192,7 +195,9 @@ namespace RentAll.Api.Controllers
                     await _accountingManager.ValidateReservationDeactivationAllowedAsync(CurrentOrganizationId, dto.ReservationId);
                 reservation.CurrentInvoiceNo = existingReservation.CurrentInvoiceNo;
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
-                return Ok(new ReservationResponseDto(updatedReservation));
+                var response = new ReservationResponseDto(updatedReservation);
+                response.HasNumberBankOnFile = (await ResolveBankOnFileAsync(updatedReservation)).ConsentId is > 0;
+                return Ok(response);
             }
             catch (InvalidOperationException ex)
             {

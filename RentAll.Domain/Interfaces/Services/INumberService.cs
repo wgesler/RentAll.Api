@@ -12,6 +12,7 @@ public interface INumberService
     Task<NumberTransaction?> GetTransactionAsync(NumberSession session, long transactionId, CancellationToken cancellationToken = default);
     Task<NumberConsent?> GetConsentAsync(NumberSession session, long consentId, CancellationToken cancellationToken = default);
     Task<NumberStoredCardChargeResult> ChargeStoredCardAsync(NumberSession session, NumberStoredCardCharge charge, CancellationToken cancellationToken = default);
+    Task<NumberStoredCardChargeResult> ChargeBankAccountAsync(NumberSession session, long consentId, decimal amount, CancellationToken cancellationToken = default);
     /// <summary>Puts a PFS subscription on hold so it never bills; the saved card stays usable.</summary>
     Task<bool> HoldSubscriptionAsync(NumberSession session, long consentId, CancellationToken cancellationToken = default);
     /// <summary>Saves a bank account as an ACH consent with no debit (ACH/Combo, Amount 0).</summary>
