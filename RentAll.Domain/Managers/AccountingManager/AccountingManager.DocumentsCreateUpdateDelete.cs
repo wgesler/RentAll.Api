@@ -9,6 +9,7 @@ public partial class AccountingManager
 
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
+        await ApplyInvoiceRecipientNameAsync(invoice);
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
         await StripReferralLinesUnlessNetInvoiceAsync(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
@@ -58,6 +59,7 @@ public partial class AccountingManager
         var postingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existingInvoice.PostingStatusId, existingInvoice.OrganizationId, existingInvoice.OfficeId, invoice.InvoiceDate, invoice.AccountingPeriod, invoice.ModifiedBy, () => LoadJournalEntriesForInvoiceDocumentAsync(existingInvoice.OrganizationId, existingInvoice));
 
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
+        await ApplyInvoiceRecipientNameAsync(invoice);
         invoice.PostingStatusId = postingStatusId;
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
         await StripReferralLinesUnlessNetInvoiceAsync(invoice);

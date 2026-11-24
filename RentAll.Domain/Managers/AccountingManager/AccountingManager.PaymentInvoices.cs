@@ -1443,22 +1443,49 @@ public partial class AccountingManager
         };
     }
 
-    private async Task<string?> ResolvePreBillingResponsiblePartyAsync(Guid organizationId, Reservation reservation)
-    {
-        if (reservation.ReservationType is ReservationType.Corporate or ReservationType.Platform)
-        {
-            if (NormalizeOptionalGuid(reservation.CompanyId) is { } companyId)
-            {
-                var companyContact = await _contactRepository.GetContactByIdsAsync(companyId, organizationId);
-                var companyName = NormalizeOptionalString(companyContact?.CompanyName);
-                if (companyName != null)
-                    return companyName;
-            }
+    private Task<string?> ResolvePreBillingResponsiblePartyAsync(Guid organizationId, Reservation reservation)
+        => ResolveInvoiceRecipientNameAsync(organizationId, reservation);
 
-            return NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(reservation.ContactName);
+    /// <summary>
+    /// The one name every invoice uses for its recipient, however it is created (Preview, Add Invoice, edits): the full
+    /// Company Name for Corporate and Platform reservations, otherwise the tenant's First + Last name. The reservation's
+    /// ContactName is not used first because some reservation queries return the short DisplayName (the reservation board).
+    /// </summary>
+    private async Task<string?> ResolveInvoiceRecipientNameAsync(Guid organizationId, Reservation reservation)
+    {
+        if (ResolveInvoiceResponsibleContactId(reservation) is { } contactId)
+        {
+            var contact = await _contactRepository.GetContactByIdsAsync(contactId, organizationId);
+            var name = contact == null ? null : ResolveInvoiceResponsibleContactName(contact, reservation.ReservationType);
+            if (name != null)
+                return name;
         }
 
-        return NormalizeOptionalString(reservation.ContactName);
+        return reservation.ReservationType is ReservationType.Corporate or ReservationType.Platform
+            ? NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(reservation.ContactName)
+            : NormalizeOptionalString(reservation.ContactName);
+    }
+
+    /// <summary>Saves the invoice with the same recipient name Preview shows, whatever name the caller sent.</summary>
+    private async Task ApplyInvoiceRecipientNameAsync(Invoice invoice)
+    {
+        string? name = null;
+        if (NormalizeOptionalGuid(invoice.ReservationId) is { } reservationId)
+        {
+            var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+            if (reservation != null)
+                name = await ResolveInvoiceRecipientNameAsync(invoice.OrganizationId, reservation);
+        }
+        else if (NormalizeOptionalGuid(invoice.ContactId) is { } contactId)
+        {
+            var contact = await _contactRepository.GetContactByIdsAsync(contactId, invoice.OrganizationId);
+            name = contact == null ? null : ResolveInvoiceResponsibleContactName(contact, ReservationType.Individual);
+        }
+
+        if (name == null)
+            return;
+        invoice.ContactName = name;
+        invoice.ResponsibleParty = name;
     }
     #endregion
 
