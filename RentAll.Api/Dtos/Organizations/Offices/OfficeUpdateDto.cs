@@ -26,6 +26,7 @@ public class OfficeUpdateDto
     public bool UseStrictOnTickets { get; set; }
     public bool UseExternalRefNo { get; set; }
     public bool PetFeeTimesNoDogs { get; set; }
+    public bool SortPropertiesNumerically { get; set; }
     public int DaysToRefundDeposit { get; set; }
     public decimal DefaultDeposit { get; set; }
     public decimal DefaultSdw { get; set; }
@@ -201,6 +202,7 @@ public class OfficeUpdateDto
             UseStrictOnTickets = UseStrictOnTickets,
             UseExternalRefNo = UseExternalRefNo,
             PetFeeTimesNoDogs = PetFeeTimesNoDogs,
+            SortPropertiesNumerically = SortPropertiesNumerically,
             DaysToRefundDeposit = DaysToRefundDeposit,
             DefaultDeposit = DefaultDeposit,
             DefaultSdw = DefaultSdw,

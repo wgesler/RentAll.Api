@@ -77,6 +77,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             UseStrictOnTickets = e.UseStrictOnTickets,
             UseExternalRefNo = e.UseExternalRefNo,
             PetFeeTimesNoDogs = e.PetFeeTimesNoDogs,
+            SortPropertiesNumerically = e.SortPropertiesNumerically,
             DaysToRefundDeposit = e.DaysToRefundDeposit,
             DefaultDeposit = e.DefaultDeposit,
             DefaultSdw = e.DefaultSdw,

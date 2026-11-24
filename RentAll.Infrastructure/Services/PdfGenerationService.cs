@@ -13,6 +13,14 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
     private IBrowser? _browser;
     private readonly SemaphoreSlim _browserSemaphore = new SemaphoreSlim(1, 1);
 
+    // Hard limits per step, so a hung Chrome fails with a clear error instead of running past Azure's ~230 s request
+    // limit (a 504 with no CORS headers). Even if every step hangs to its limit: 2 x (launch 45 + page 15) + content 45
+    // + pdf 45 = 210 s. Normally a hang is caught when opening the page, and Chrome is restarted.
+    private static readonly TimeSpan BrowserLaunchLimit = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan NewPageLimit = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan SetContentLimit = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan PdfLimit = TimeSpan.FromSeconds(45);
+
     /// <summary>
     /// Matches img tags and captures the src attribute value (supports single and double quotes; src in any order).
     /// </summary>
@@ -43,7 +51,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 {
                     Headless = true,
                     ExecutablePath = executablePath,
-                    Timeout = 60000,
+                    Timeout = (int)BrowserLaunchLimit.TotalMilliseconds,
                     Args = new[]
 
                     {
@@ -200,22 +208,18 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             _logger.LogDebug("PDF timing: InlineExternalImagesAsync = {ElapsedMs} ms", (DateTime.UtcNow - inlineStart).TotalMilliseconds);
         }
 
+        var step = "OpenPage";
         try
         {
-            var browserStart = DateTime.UtcNow;
-            var browser = await GetBrowserAsync();
-            _logger.LogDebug("PDF timing: GetBrowserAsync = {ElapsedMs} ms", (DateTime.UtcNow - browserStart).TotalMilliseconds);
+            await using var page = await OpenPageAsync();
 
-            var newPageStart = DateTime.UtcNow;
-            await using var page = await browser.NewPageAsync();
-            _logger.LogDebug("PDF timing: NewPageAsync = {ElapsedMs} ms", (DateTime.UtcNow - newPageStart).TotalMilliseconds);
-
+            step = "SetContent";
             var setContentStart = DateTime.UtcNow;
             await page.SetContentAsync(htmlContent, new NavigationOptions
             {
-                Timeout = 60000,
+                Timeout = (int)SetContentLimit.TotalMilliseconds,
                 WaitUntil = new[] { WaitUntilNavigation.Load }
-            });
+            }).WaitAsync(SetContentLimit + TimeSpan.FromSeconds(5));
             _logger.LogDebug("PDF timing: SetContentAsync = {ElapsedMs} ms", (DateTime.UtcNow - setContentStart).TotalMilliseconds);
 
             var pdfOptions = new PuppeteerSharp.PdfOptions
@@ -252,19 +256,76 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 pdfOptions.Height = $"{options.Height}px";
             }
 
+            step = "Pdf";
             var pdfStart = DateTime.UtcNow;
-            var pdfBytes = await page.PdfDataAsync(pdfOptions);
-            var totalMs = (DateTime.UtcNow - pdfStart).TotalMilliseconds;
-
+            var pdfBytes = await page.PdfDataAsync(pdfOptions).WaitAsync(PdfLimit);
             _logger.LogDebug("PDF timing: PdfDataAsync = {ElapsedMs} ms", (DateTime.UtcNow - pdfStart).TotalMilliseconds);
-            if (totalMs > 4000) _logger.LogInformation("SLOW PDF: Total={TotalMs}ms", totalMs);
+
+            var totalMs = (DateTime.UtcNow - totalStart).TotalMilliseconds;
+            if (totalMs > 15000)
+                _logger.LogError("[Pdf SlowGeneration] TotalMs={TotalMs} HtmlLength={HtmlLength}", (int)totalMs, htmlContent.Length);
 
             return pdfBytes;
+        }
+        catch (TimeoutException ex)
+        {
+            // Chrome stopped answering: restart it so the next PDF doesn't wait on the same hung browser.
+            _logger.LogError(ex, "[Pdf Timeout] Step={Step} ElapsedMs={ElapsedMs} HtmlLength={HtmlLength}; restarting Chrome",
+                step, (int)(DateTime.UtcNow - totalStart).TotalMilliseconds, htmlContent.Length);
+            await ResetBrowserAsync();
+            throw new InvalidOperationException("The PDF took too long to generate. Please try again.", ex);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error converting HTML to PDF");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// A new page in the shared Chrome. If Chrome doesn't answer (hung or crashed but still "connected"), it is
+    /// restarted once and the page opened in the fresh browser.
+    /// </summary>
+    private async Task<IPage> OpenPageAsync()
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                var browser = await GetBrowserAsync().WaitAsync(BrowserLaunchLimit + TimeSpan.FromSeconds(5));
+                return await browser.NewPageAsync().WaitAsync(NewPageLimit);
+            }
+            catch (Exception ex) when (attempt == 1)
+            {
+                _logger.LogError(ex, "[Pdf BrowserNotResponding] Restarting Chrome and trying again");
+                await ResetBrowserAsync();
+            }
+        }
+    }
+
+    /// <summary>Closes (or kills) the shared Chrome so the next request launches a fresh one.</summary>
+    private async Task ResetBrowserAsync()
+    {
+        await _browserSemaphore.WaitAsync();
+        try
+        {
+            var browser = _browser;
+            _browser = null;
+            if (browser == null)
+                return;
+            try
+            {
+                await browser.CloseAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Chrome did not close; killing its process");
+                try { browser.Process?.Kill(entireProcessTree: true); } catch { /* already gone */ }
+            }
+        }
+        finally
+        {
+            _browserSemaphore.Release();
         }
     }
 
